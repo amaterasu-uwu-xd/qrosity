@@ -2,8 +2,9 @@
 name = "qrosity"
 version = "0.1.0"
 edition = "2024"
+description = "None"
 
 [dependencies]
 clap = { version = "4.5.38", features = ["derive"] }
-fast_qr = { version = "0.13.0", features = ["svg"] }
 iced = { version = "0.13.1", features = ["svg"] }
+promkit = "0.9.1"
