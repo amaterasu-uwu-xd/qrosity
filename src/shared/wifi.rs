@@ -1,8 +1,5 @@
 use clap::Args;
-
 use crate::{commands::cli::SharedArgs, shared::Qr};
-
-use super::to_qr;
 
 #[derive(Args)]
 pub struct WiFi {
@@ -10,29 +7,31 @@ pub struct WiFi {
     #[arg(long)]
     pub ssid: String,
 
-    /// Network password
-    #[arg(long)]
-    pub password: String,
-
     /// Network auth type
-    #[arg(long, default_value = "WPA", value_parser = ["WPA", "WEP"])]
+    #[arg(long, value_parser = ["WEP", "WPA", "WPA3", "NONE"])]
     pub encryption: String,
+
+    /// Network password
+    #[arg(long, required_if_eq("encryption", "WEP"), required_if_eq("encryption", "WPA"), required_if_eq("encryption", "WPA3"))]
+    pub password: Option<String>,
+
+    /// Hidden network
+    #[arg(long, default_value = "false")]
+    pub hidden: bool,
 
     #[clap(flatten)]
     pub shared: SharedArgs,
 }
 
-pub fn handle(cmd: WiFi) {
-    let qr_str = cmd.to_str();
-    to_qr(qr_str, cmd.shared);
-}
-
 impl Qr for WiFi {
     fn to_str(&self) -> String {
-        format!("WIFI:S:{};T:{};P:{};;", self.ssid, self.encryption, self.password)
+        if self.encryption == "NONE" {
+            return format!("WIFI:S:{};T:{};H:{};", self.ssid, self.encryption, self.hidden);
+        }
+        format!("WIFI:S:{};T:{};P:{};H:{};", self.ssid, self.encryption, self.password.as_ref().unwrap(), self.hidden)
     }
     
-    fn get_data<T: Qr>(element: T) -> T {
+    fn get_data<T: Qr>() -> T {
         todo!()
     }
 }

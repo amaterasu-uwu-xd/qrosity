@@ -1,25 +1,36 @@
 use std::path::PathBuf;
 
 use clap::{Args, Subcommand};
+use crate::shared::mail::Mail;
 use crate::shared::qrgen::QrCodeEcc;
-pub use crate::shared::wifi::WiFi;
-pub use crate::shared::wifi;
+use crate::shared::Qr;
+use crate::shared::text::Text;
+use crate::shared::wifi::WiFi;
 
 #[derive(Subcommand)]
 pub enum CliCommand {
     /// Create a new QR to share a WiFi network
     Wifi(WiFi),
+    /// Create a new QR to share text
+    Text(Text),
+    /// Create a new QR to share an email
+    Mail(Mail),
 }
 
 pub fn handle(cmd: CliCommand) {
     match cmd {
-        CliCommand::Wifi(m) => wifi::handle(m),
-        //CliCommand::Mode2(m) => cli_mode2::handle(m),
+        CliCommand::Wifi(m) => crate::shared::to_qr(m.to_str(), m.shared),
+        CliCommand::Text(m) => crate::shared::to_qr(m.to_str(), m.shared),
+        CliCommand::Mail(m) => crate::shared::to_qr(m.to_str(), m.shared)
     };
 }
 
 #[derive(Args)]
 pub struct SharedArgs {
+    /// Border size in modules
+    #[arg(long, default_value = "4", value_parser = clap::value_parser!(i32).range(0..=100))]
+    pub border: i32,
+
     /// Correction level
     #[arg(long, default_value = "medium")]
     pub ecl: QrCodeEcc,
@@ -33,6 +44,6 @@ pub struct SharedArgs {
     pub mask: Option<u8>,
 
     /// Where to save the QR
-    #[arg(long, short = 'o')]
+    #[arg(long)]
     pub output: PathBuf,
 }
