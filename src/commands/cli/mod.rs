@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use clap::{Args, Subcommand};
 use crate::shared::mail::Mail;
 use crate::shared::qrgen::QrCodeEcc;
+use crate::shared::web::Web;
 use crate::shared::Qr;
 use crate::shared::text::Text;
 use crate::shared::wifi::WiFi;
@@ -15,13 +16,16 @@ pub enum CliCommand {
     Text(Text),
     /// Create a new QR to share an email
     Mail(Mail),
+    /// Create a new QR to share a website
+    Web(Web),
 }
 
 pub fn handle(cmd: CliCommand) {
     match cmd {
         CliCommand::Wifi(m) => crate::shared::to_qr(m.to_str(), m.shared),
         CliCommand::Text(m) => crate::shared::to_qr(m.to_str(), m.shared),
-        CliCommand::Mail(m) => crate::shared::to_qr(m.to_str(), m.shared)
+        CliCommand::Mail(m) => crate::shared::to_qr(m.to_str(), m.shared),
+        CliCommand::Web(m) => crate::shared::to_qr(m.to_str(), m.shared)
     };
 }
 

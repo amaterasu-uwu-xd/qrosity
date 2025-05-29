@@ -5,7 +5,7 @@ use super::Qr;
 #[derive(Args)]
 pub struct Mail {
     /// Email address
-    #[arg(long, required = true, value_parser = validate_email)]
+    #[arg(long, required = true, value_parser = validate_email, value_hint = clap::ValueHint::EmailAddress)]
     pub email: String,
 
     /// Subject of the email

@@ -6,6 +6,7 @@ pub mod qrgen;
 pub mod wifi;
 pub mod text;
 pub mod mail;
+pub mod web;
 
 pub trait Qr {
     /// Struct the data to use it in the QR
