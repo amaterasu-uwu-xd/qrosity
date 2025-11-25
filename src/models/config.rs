@@ -10,6 +10,7 @@ pub enum ModuleShape {
     Square,
     Dots,
     Gapped,
+    Heart,
     Diamond,
 }
 
@@ -30,12 +31,12 @@ pub struct QrConfig {
         arg(
             long,
             default_value = "4",
-            help = "Border size of the QR code, in modules",
+            help = "Quiet zone size (0-10 modules)",
             value_parser = clap::value_parser!(u32).range(0..=10),
             global = true
         )
     )]
-    pub border: u32,
+    pub quiet_zone: u32,
 
     #[cfg_attr(
         feature = "cli",
@@ -77,7 +78,7 @@ pub struct QrConfig {
             global = true
         )
     )]
-    pub foreground_color: String,
+    pub foreground: String,
 
     #[cfg_attr(
         feature = "cli",
@@ -88,7 +89,7 @@ pub struct QrConfig {
             global = true
         )
     )]
-    pub background_color: String,
+    pub background: String,
 
     // Pixels per module
     #[cfg_attr(
@@ -140,18 +141,6 @@ pub struct QrConfig {
         )
     )]
     pub icon: Option<String>,
-
-    #[cfg_attr(
-        feature = "cli",
-        arg(
-            long,
-            help = "Size of the embedded icon as a percentage of the QR code size",
-            default_value = "20",
-            value_parser = clap::value_parser!(u8).range(0..=50),
-            global = true
-        )
-    )]
-    pub icon_size_percent: u8,
 
     #[cfg_attr(
         feature = "cli",

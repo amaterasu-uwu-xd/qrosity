@@ -1,5 +1,5 @@
 use crate::core::qrgen::QrCode;
-use crate::models::config::{FinderShape, ModuleShape, QrConfig};
+use crate::models::config::{ FinderShape, ModuleShape, QrConfig};
 use tiny_skia::*;
 
 // Asumimos que tienes un trait o struct para tu matriz
@@ -24,16 +24,15 @@ pub fn render_qr<G: QrGrid>(
     pixel_size: f32,
 ) -> Result<Pixmap, String> {
     let size = grid.size();
-    let quiet_zone = options.border as f32; // Unidades de modulo
+    let quiet_zone = options.quiet_zone as f32; // Unidades de modulo
     let width_px = (size as f32 + quiet_zone * 2.0) * pixel_size;
 
     let mut pixmap = Pixmap::new(width_px as u32, width_px as u32)
         .ok_or("No se pudo crear el buffer de imagen")?;
-
-    let bg_color = parse_color(&options.background_color)?;
+    let bg_color = parse_color(&options.background)?;
     pixmap.fill(bg_color);
 
-    let fg_color = parse_color(&options.foreground_color)?;
+    let fg_color = parse_color(&options.foreground)?;
     let mut paint = Paint::default();
     paint.set_color(fg_color);
     paint.anti_alias = true;
@@ -51,7 +50,7 @@ pub fn render_qr<G: QrGrid>(
                 let px = (x as f32 + quiet_zone) * pixel_size;
                 let py = (y as f32 + quiet_zone) * pixel_size;
 
-                let path = create_module_path(options.shape, px, py, pixel_size);
+                let path = draw_module(options.shape, px, py, pixel_size);
                 pixmap.fill_path(
                     &path,
                     &paint,
@@ -93,12 +92,7 @@ pub fn render_qr<G: QrGrid>(
     );
 
     if let Some(icon_path) = &options.icon {
-        draw_icon(
-            &mut pixmap,
-            icon_path,
-            width_px,
-            options.icon_size_percent as f32 / 100.0,
-        )?;
+        draw_icon(&mut pixmap, options.ppm, icon_path, size as f32, width_px)?;
     }
 
     Ok(pixmap)
@@ -106,7 +100,7 @@ pub fn render_qr<G: QrGrid>(
 
 // --- Helpers de Formas ---
 
-fn create_module_path(shape: ModuleShape, x: f32, y: f32, size: f32) -> Path {
+fn draw_module(shape: ModuleShape, x: f32, y: f32, size: f32) -> Path {
     let mut pb = PathBuilder::new();
     match shape {
         ModuleShape::Square => {
@@ -135,6 +129,34 @@ fn create_module_path(shape: ModuleShape, x: f32, y: f32, size: f32) -> Path {
             pb.line_to(x + size, y + size / 2.0);
             pb.line_to(x + size / 2.0, y + size);
             pb.line_to(x, y + size / 2.0);
+            pb.close();
+        }
+        ModuleShape::Heart => {
+            let s = size;
+            let s_half = s / 2.0;
+            pb.move_to(x + s_half, y + s * 0.3);
+            pb.cubic_to(x + s_half, y, x + s * 0.95, y, x + s * 0.95, y + s * 0.3);
+
+            pb.cubic_to(
+                x + s * 0.95,
+                y + s * 0.6,
+                x + s * 0.65,
+                y + s * 0.9,
+                x + s_half,
+                y + s,
+            );
+
+            pb.cubic_to(
+                x + s * 0.35,
+                y + s * 0.9,
+                x + s * 0.05,
+                y + s * 0.6,
+                x + s * 0.05,
+                y + s * 0.3,
+            );
+
+            pb.cubic_to(x + s * 0.05, y, x + s_half, y, x + s_half, y + s * 0.3);
+
             pb.close();
         }
     }
@@ -178,17 +200,34 @@ fn draw_finder(
             pb.push_circle(center_x, center_y, (3.0 * scale) / 2.0);
         }
         FinderShape::Rounded => {
+            let x_origin = (grid_x + quiet) * scale;
+            let y_origin = (grid_y + quiet) * scale;
+            let size_7 = 7.0 * scale;
+
             // 1. Exterior (7x7)
             let r_outer = scale * 1.0;
-            pb.move_to(x + r_outer, y);
-            pb.line_to(x + size_7 - r_outer, y);
-            pb.quad_to(x + size_7, y, x + size_7, y + r_outer);
-            pb.line_to(x + size_7, y + size_7 - r_outer);
-            pb.quad_to(x + size_7, y + size_7, x + size_7 - r_outer, y + size_7);
-            pb.line_to(x + r_outer, y + size_7);
-            pb.quad_to(x, y + size_7, x, y + size_7 - r_outer);
-            pb.line_to(x, y + r_outer);
-            pb.quad_to(x, y, x + r_outer, y);
+            let size_5 = 5.0 * scale;
+            let offset_1 = 1.0 * scale;
+            let r_inner = scale * 0.7;
+            let size_3 = 3.0 * scale;
+            let offset_2 = 2.0 * scale;
+            let r_center = scale * 0.5;
+
+            let mut draw_rounded_rect = |x_start: f32, y_start: f32, s: f32, r: f32| {
+                let r_safe = r.min(s / 2.0);
+                pb.move_to(x_start + r_safe, y_start);
+                pb.line_to(x_start + s - r_safe, y_start);
+                pb.quad_to(x_start + s, y_start, x_start + s, y_start + r_safe);
+                pb.line_to(x_start + s, y_start + s - r_safe);
+                pb.quad_to(x_start + s, y_start + s, x_start + s - r_safe, y_start + s);
+                pb.line_to(x_start + r_safe, y_start + s);
+                pb.quad_to(x_start, y_start + s, x_start, y_start + s - r_safe);
+                pb.line_to(x_start, y_start + r_safe);
+                pb.quad_to(x_start, y_start, x_start + r_safe, y_start);
+            };
+            draw_rounded_rect(x_origin, y_origin, size_7, r_outer);
+            draw_rounded_rect(x_origin + offset_1, y_origin + offset_1, size_5, r_inner);
+            draw_rounded_rect(x_origin + offset_2, y_origin + offset_2, size_3, r_center);
             pb.close();
         }
     }
@@ -216,12 +255,7 @@ fn parse_color(hex: &str) -> Result<Color, String> {
     Ok(Color::from_rgba8(r, g, b, 255))
 }
 
-fn draw_icon(
-    pixmap: &mut Pixmap,
-    path: &str,
-    canvas_size: f32,
-    icon_size: f32,
-) -> Result<(), String> {
+fn draw_icon(pixmap: &mut Pixmap, ppm: u32, path: &str, size: f32, canvas_size: f32) -> Result<(), String> {
     let img_source = image::open(path).map_err(|e| e.to_string())?.to_rgba8();
     let width = img_source.width() as f32;
     let height = img_source.height() as f32;
@@ -232,7 +266,9 @@ fn draw_icon(
     )
     .ok_or("Could not create pixmap from icon image")?;
 
-    let target_icon_size = canvas_size * icon_size;
+    // Size es el número de módulos del QR, tomamos un 20% 
+    
+    let target_icon_size = size * 0.2 * ppm as f32;
     let scale = target_icon_size / width.max(height);
     let translate_x = (canvas_size - (width * scale)) / 2.0;
     let translate_y = (canvas_size - (height * scale)) / 2.0;
