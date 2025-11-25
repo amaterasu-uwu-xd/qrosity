@@ -1,0 +1,167 @@
+use crate::core::qrgen;
+
+#[cfg(feature = "cli")]
+use clap::{Args, ValueEnum};
+
+// Formas para los módulos de datos (los puntitos pequeños)
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "cli", derive(ValueEnum))]
+pub enum ModuleShape {
+    Square,
+    Dots,
+    Gapped,
+    Diamond,
+}
+
+// Formas para los "Ojos" (Patrones de detección de posición)
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "cli", derive(ValueEnum))]
+pub enum FinderShape {
+    Square,
+    Circle,
+    Rounded,
+}
+
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "cli", derive(Args))]
+pub struct QrConfig {
+    #[cfg_attr(
+        feature = "cli",
+        arg(
+            long,
+            default_value = "4",
+            help = "Border size of the QR code, in modules",
+            value_parser = clap::value_parser!(u32).range(0..=10),
+            global = true
+        )
+    )]
+    pub border: u32,
+
+    #[cfg_attr(
+        feature = "cli",
+        arg(
+            long,
+            help = "Maximum QR Code version (1-40)",
+            value_parser = clap::value_parser!(u8).range(1..=40)
+        )
+    )]
+    pub max_version: Option<u8>,
+
+    #[cfg_attr(
+        feature = "cli",
+        arg(
+            long,
+            default_value = "medium",
+            help = "Error correction level",
+            global = true
+        )
+    )]
+    pub ecl: qrgen::QrCodeEcc,
+
+    #[cfg_attr(
+        feature = "cli", 
+        arg(
+            long, 
+            help = "Mask pattern to use (0-7). If not set, it will be chosen automatically.",
+            value_parser = clap::value_parser!(u8).range(0..=7)
+        )
+    )]
+    pub mask_pattern: Option<u8>,
+
+    #[cfg_attr(
+        feature = "cli",
+        arg(
+            long,
+            help = "Foreground color in hex format",
+            default_value = "#000000",
+            global = true
+        )
+    )]
+    pub foreground_color: String,
+
+    #[cfg_attr(
+        feature = "cli",
+        arg(
+            long,
+            help = "Background color in hex format",
+            default_value = "#FFFFFF",
+            global = true
+        )
+    )]
+    pub background_color: String,
+
+    // Pixels per module
+    #[cfg_attr(
+        feature = "cli",
+        arg(
+            long,
+            help = "Pixels per module",
+            default_value = "20",
+            value_parser = clap::value_parser!(u32).range(1..=100),
+            global = true
+        )
+    )]
+    pub ppm: u32,
+
+    #[cfg_attr(
+        feature = "cli",
+        arg(
+            long,
+            help = "Boost error correction level",
+            default_value = "true",
+            global = true
+        )
+    )]
+    pub boost_error_correction: bool,
+
+    #[cfg_attr(
+        feature = "cli",
+        arg(long, help = "Module shape",
+        value_enum, default_value_t = ModuleShape::Square,
+        global = true)
+    )]
+    pub shape: ModuleShape,
+
+    #[cfg_attr(
+        feature = "cli",
+        arg(long, help = "Finder shape",
+        value_enum,
+        default_value_t = FinderShape::Square,
+        global = true)
+    )]
+    pub finder: FinderShape,
+
+    #[cfg_attr(
+        feature = "cli",
+        arg(
+            long,
+            help = "Path to an icon image to embed in the QR code",
+            global = true
+        )
+    )]
+    pub icon: Option<String>,
+
+    #[cfg_attr(
+        feature = "cli",
+        arg(
+            long,
+            help = "Size of the embedded icon as a percentage of the QR code size",
+            default_value = "20",
+            value_parser = clap::value_parser!(u8).range(0..=50),
+            global = true
+        )
+    )]
+    pub icon_size_percent: u8,
+
+    #[cfg_attr(
+        feature = "cli",
+        arg(
+            long,
+            help = "Output file path", 
+            global = true,
+            // Default to "qr_%Y%m%d_%H%M%S.png"
+            default_value_t = chrono::Local::now().format("qr_%Y-%m-%d_%H:%M:%S.png").to_string()
+        )
+    )]
+    pub output: String,
+}
