@@ -1,0 +1,143 @@
+use crate::core::qrgen::QrCode;
+use crate::models::QrConfig;
+use tiny_skia::*;
+
+pub mod module;
+pub mod finder;
+
+use module::draw_module;
+use finder::draw_finder;
+
+// Asumimos que tienes un trait o struct para tu matriz
+pub trait QrGrid {
+    fn size(&self) -> usize;
+    fn get_module(&self, x: usize, y: usize) -> bool;
+}
+
+impl QrGrid for QrCode {
+    fn size(&self) -> usize {
+        self.size() as usize
+    }
+
+    fn get_module(&self, x: usize, y: usize) -> bool {
+        self.get_module(x as i32, y as i32)
+    }
+}
+
+pub fn render_qr<G: QrGrid>(
+    grid: &G,
+    options: &QrConfig,
+    pixel_size: f32,
+) -> Result<Pixmap, String> {
+    let size = grid.size();
+    let quiet_zone = options.quiet_zone as f32; // Unidades de modulo
+    let width_px = (size as f32 + quiet_zone * 2.0) * pixel_size;
+
+    let mut pixmap = Pixmap::new(width_px as u32, width_px as u32)
+        .ok_or("No se pudo crear el buffer de imagen")?;
+    let bg_color = parse_color(&options.background)?;
+    pixmap.fill(bg_color);
+
+    let fg_color = parse_color(&options.foreground)?;
+    let mut paint = Paint::default();
+    paint.set_color(fg_color);
+    paint.anti_alias = true;
+
+    for y in 0..size {
+        for x in 0..size {
+            let is_finder =
+                (x < 7 && y < 7) || (x >= size - 7 && y < 7) || (x < 7 && y >= size - 7);
+
+            if is_finder {
+                continue;
+            }
+
+            if grid.get_module(x, y) {
+                let px = (x as f32 + quiet_zone) * pixel_size;
+                let py = (y as f32 + quiet_zone) * pixel_size;
+
+                let path = draw_module(options.shape, px, py, pixel_size);
+                pixmap.fill_path(
+                    &path,
+                    &paint,
+                    FillRule::Winding,
+                    Transform::identity(),
+                    None,
+                );
+            }
+        }
+    }
+
+    // 4. Dibujar los 3 Patrones de Detección (Customizados)
+    draw_finder(
+        &mut pixmap,
+        0.0,
+        0.0,
+        pixel_size,
+        quiet_zone,
+        options.finder,
+        &paint,
+    );
+    draw_finder(
+        &mut pixmap,
+        (size - 7) as f32,
+        0.0,
+        pixel_size,
+        quiet_zone,
+        options.finder,
+        &paint,
+    );
+    draw_finder(
+        &mut pixmap,
+        0.0,
+        (size - 7) as f32,
+        pixel_size,
+        quiet_zone,
+        options.finder,
+        &paint,
+    );
+
+    if let Some(icon_path) = &options.icon {
+        draw_icon(&mut pixmap, options.ppm, icon_path, size as f32, width_px)?;
+    }
+
+    Ok(pixmap)
+}
+
+// --- Helper de Color ---
+fn parse_color(hex: &str) -> Result<Color, String> {
+    let hex = hex.trim_start_matches('#');
+    let r = u8::from_str_radix(&hex[0..2], 16).unwrap_or(0);
+    let g = u8::from_str_radix(&hex[2..4], 16).unwrap_or(0);
+    let b = u8::from_str_radix(&hex[4..6], 16).unwrap_or(0);
+
+    Ok(Color::from_rgba8(r, g, b, 255))
+}
+
+fn draw_icon(pixmap: &mut Pixmap, ppm: u32, path: &str, size: f32, canvas_size: f32) -> Result<(), String> {
+    let img_source = image::open(path).map_err(|e| e.to_string())?.to_rgba8();
+    let width = img_source.width() as f32;
+    let height = img_source.height() as f32;
+
+    let icon_pixmap = Pixmap::from_vec(
+        img_source.into_raw(),
+        tiny_skia::IntSize::from_wh(width as u32, height as u32).unwrap(),
+    )
+    .ok_or("Could not create pixmap from icon image")?;
+
+    // Size es el número de módulos del QR, tomamos un 20% 
+    
+    let target_icon_size = size * 0.2 * ppm as f32;
+    let scale = target_icon_size / width.max(height);
+    let translate_x = (canvas_size - (width * scale)) / 2.0;
+    let translate_y = (canvas_size - (height * scale)) / 2.0;
+
+    let transform = Transform::from_scale(scale, scale).post_translate(translate_x, translate_y);
+
+    let mut paint = PixmapPaint::default();
+    paint.blend_mode = BlendMode::SourceOver;
+
+    pixmap.draw_pixmap(0, 0, icon_pixmap.as_ref(), &paint, transform, None);
+
+    Ok(())
+}
