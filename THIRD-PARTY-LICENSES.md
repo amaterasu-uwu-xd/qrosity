@@ -9,7 +9,8 @@ This page lists the licenses of the projects used in cargo-about.
 - [University of Illinois/NCSA Open Source License](#NCSA) (1)
 - [Unicode License v3](#Unicode-3.0) (1)
 - [zlib License](#Zlib) (1)
-- [GNU Library General Public License v2.0 only](#GNU-Library-General-Public-License-v2.0-only)
+- [GNU Library General Public License v2.0 only](#GNU-Library-General-Public-License-v2.0-only) (1)
+- [GNU Lesser General Public License 3.0](#GNU-Lesser-General-Public-License-3.0) (1)
 
 ## All license text
 ### Apache-2.0
@@ -4693,7 +4694,7 @@ the following restrictions:
 
 ### GNU-Library-General-Public-License-v2.0-only
 ##### Used by
-[Kirigami](https://invent.kde.org/frameworks/kirigami)
+- [Kirigami](https://invent.kde.org/frameworks/kirigami)
 ##### License
 ```
 GNU LIBRARY GENERAL PUBLIC LICENSE
@@ -5147,7 +5148,7 @@ That's all there is to it!
 
 ### GNU-Lesser-General-Public-License-3.0
 ##### Used by
-[Qt](https://www.qt.io/)
+- [Qt](https://www.qt.io/)
 ##### License
 ```
                     GNU LESSER GENERAL PUBLIC LICENSE
