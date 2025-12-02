@@ -1,5 +1,5 @@
 use crate::core::qrgen::QrCode;
-use crate::models::QrConfig;
+use crate::models::{QrConfig, GradientDirection};
 use tiny_skia::*;
 
 pub mod module;
@@ -38,10 +38,58 @@ pub fn render_qr<G: QrGrid>(
     let bg_color = parse_color(&options.background)?;
     pixmap.fill(bg_color);
 
-    let fg_color = parse_color(&options.foreground)?;
     let mut paint = Paint::default();
-    paint.set_color(fg_color);
     paint.anti_alias = true;
+
+    let mut colors = Vec::new();
+    if options.colors.is_empty() {
+        colors.push(parse_color("#000000")?);
+    } else {
+        for color_hex in &options.colors {
+            colors.push(parse_color(color_hex)?);
+        }
+    }
+
+    if colors.len() > 1 {
+        let (start_point, end_point) = match options.gradient_direction {
+            GradientDirection::TopToBottom => (
+                Point::from_xy(width_px / 2.0, 0.0),
+                Point::from_xy(width_px / 2.0, width_px),
+            ),
+            GradientDirection::LeftToRight => (
+                Point::from_xy(0.0, width_px / 2.0),
+                Point::from_xy(width_px, width_px / 2.0),
+            ),
+            GradientDirection::TopLeftToBottomRight => {
+                (Point::from_xy(0.0, 0.0), Point::from_xy(width_px, width_px))
+            }
+            GradientDirection::BottomLeftToTopRight => {
+                (Point::from_xy(0.0, width_px), Point::from_xy(width_px, 0.0))
+            }
+        };
+
+        let stops: Vec<GradientStop> = colors
+            .iter()
+            .enumerate()
+            .map(|(i, &color)| {
+                let pos = i as f32 / (colors.len() - 1) as f32;
+                GradientStop::new(pos, color)
+            })
+            .collect();
+
+        let gradient = LinearGradient::new(
+            start_point,
+            end_point,
+            stops,
+            SpreadMode::Pad,
+            Transform::identity(),
+        )
+        .ok_or("Failed to create gradient")?;
+
+        paint.shader = gradient;
+    } else {
+        paint.set_color(colors[0]);
+    }
 
     for y in 0..size {
         for x in 0..size {

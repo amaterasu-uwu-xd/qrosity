@@ -10,3 +10,4 @@ pub use wrapper::QrData;
 pub use config::QrConfig;
 pub use config::FinderShape;
 pub use config::ModuleShape;
+pub use config::GradientDirection;

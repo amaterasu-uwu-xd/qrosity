@@ -23,6 +23,15 @@ pub enum FinderShape {
     Rounded,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "cli", derive(ValueEnum))]
+pub enum GradientDirection {
+    TopToBottom,
+    LeftToRight,
+    TopLeftToBottomRight,
+    BottomLeftToTopRight,
+}
+
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "cli", derive(Args))]
 pub struct QrConfig {
@@ -73,12 +82,13 @@ pub struct QrConfig {
         feature = "cli",
         arg(
             long,
-            help = "Foreground color in hex format",
+            help = "Foreground color(s). If multiple colors are provided, a gradient is created.",
             default_value = "#000000",
-            global = true
+            global = true,
+            num_args = 1..,
         )
     )]
-    pub foreground: String,
+    pub colors: Vec<String>,
 
     #[cfg_attr(
         feature = "cli",
@@ -90,6 +100,18 @@ pub struct QrConfig {
         )
     )]
     pub background: String,
+
+    #[cfg_attr(
+        feature = "cli",
+        arg(
+            long,
+            help = "Gradient direction",
+            value_enum,
+            default_value_t = GradientDirection::TopLeftToBottomRight,
+            global = true
+        )
+    )]
+    pub gradient_direction: GradientDirection,
 
     // Pixels per module
     #[cfg_attr(
