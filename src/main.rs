@@ -4,21 +4,29 @@ use clap::{Parser, Subcommand};
 use qrosity::modes::gui::run as run_gui_app;
 
 #[cfg(feature = "cli")]
-use qrosity::{models::QrConfig, modes::cli::run as run_cli_app};
+use qrosity::{models::{QrConfig, QrData, TextQr}, modes::cli::run as run_cli_app};
 
 #[derive(Parser)]
 #[command(author, version, about = "Qrosity - QR Code Generator")]
 struct App {
+    #[cfg(feature = "cli")]
+    #[command(flatten)]
+    config: QrConfig,
+
+    #[cfg(feature = "cli")]
+    #[command(flatten)]
+    text: TextQr,
+
     #[command(subcommand)]
-    mode: AppMode,
+    mode: Option<AppMode>,
 }
 
 #[derive(Subcommand)]
 enum AppMode {
     #[cfg(feature = "cli")]
-    #[command(name = "cli")]
-    Cli(CliArgs),
-    
+    #[command(flatten)]
+    Qr(QrData),
+
     #[cfg(feature = "gui")]
     Gui,
 
@@ -29,36 +37,27 @@ enum AppMode {
     }
 }
 
-#[cfg(feature = "cli")]
-#[derive(clap::Args)]
-struct CliArgs {
-    #[command(flatten)]
-    config: QrConfig,
-
-    #[command(subcommand)]
-    data: qrosity::models::QrData,
-}
-
 fn main() {
 
     let app = App::parse();
 
     match app.mode {
-        #[cfg(feature = "cli")]
-        AppMode::Cli(args) => {
-            run_cli_app(
-                args.config,
-                args.data
-            );
-        },
         #[cfg(feature = "gui")]
-        AppMode::Gui => {
+        Some(AppMode::Gui) => {
             run_gui_app();
         },
         #[cfg(feature = "batch")]
-        AppMode::Batch { input } => {
+        Some(AppMode::Batch { input }) => {
             // Placeholder for batch mode functionality
             println!("Batch mode with input file: {}", input);
         },
+        #[cfg(feature = "cli")]
+        Some(AppMode::Qr(data)) => {
+            run_cli_app(app.config, data);
+        },
+        None => {
+            #[cfg(feature = "cli")]
+            run_cli_app(app.config, QrData::Text(app.text));
+        }
     }
 }
