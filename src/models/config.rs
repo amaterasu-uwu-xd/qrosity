@@ -12,6 +12,8 @@ pub enum ModuleShape {
     Gapped,
     Heart,
     Diamond,
+    HorizontalBars,
+    VerticalBars,
 }
 
 // Formas para los "Ojos" (Patrones de detección de posición)
@@ -30,6 +32,7 @@ pub enum GradientDirection {
     LeftToRight,
     TopLeftToBottomRight,
     BottomLeftToTopRight,
+    Radial,
 }
 
 #[derive(Debug, Clone)]

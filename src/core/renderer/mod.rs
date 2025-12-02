@@ -5,7 +5,7 @@ use tiny_skia::*;
 pub mod module;
 pub mod finder;
 
-use module::draw_module;
+use module::{draw_module, ModuleContext};
 use finder::draw_finder;
 
 // Asumimos que tienes un trait o struct para tu matriz
@@ -51,23 +51,6 @@ pub fn render_qr<G: QrGrid>(
     }
 
     if colors.len() > 1 {
-        let (start_point, end_point) = match options.gradient_direction {
-            GradientDirection::TopToBottom => (
-                Point::from_xy(width_px / 2.0, 0.0),
-                Point::from_xy(width_px / 2.0, width_px),
-            ),
-            GradientDirection::LeftToRight => (
-                Point::from_xy(0.0, width_px / 2.0),
-                Point::from_xy(width_px, width_px / 2.0),
-            ),
-            GradientDirection::TopLeftToBottomRight => {
-                (Point::from_xy(0.0, 0.0), Point::from_xy(width_px, width_px))
-            }
-            GradientDirection::BottomLeftToTopRight => {
-                (Point::from_xy(0.0, width_px), Point::from_xy(width_px, 0.0))
-            }
-        };
-
         let stops: Vec<GradientStop> = colors
             .iter()
             .enumerate()
@@ -77,16 +60,58 @@ pub fn render_qr<G: QrGrid>(
             })
             .collect();
 
-        let gradient = LinearGradient::new(
-            start_point,
-            end_point,
-            stops,
-            SpreadMode::Pad,
-            Transform::identity(),
-        )
-        .ok_or("Failed to create gradient")?;
+        let shader = if options.gradient_direction == GradientDirection::Radial {
+            let center_x = width_px / 2.0;
+            let center_y = width_px / 2.0;
+            // El radio debe basarse en el tamaño del QR sin la quiet zone para que el gradiente
+            // se ajuste mejor al contenido visible.
+            let qr_size_px = size as f32 * pixel_size;
+            let radius = qr_size_px / 2.0 * 1.414;
 
-        paint.shader = gradient;
+            RadialGradient::new(
+                Point::from_xy(center_x, center_y),
+                Point::from_xy(center_x, center_y),
+                radius,
+                stops,
+                SpreadMode::Pad,
+                Transform::identity(),
+            )
+            .ok_or("Failed to create radial gradient")?
+        } else {
+            let (start_point, end_point) = match options.gradient_direction {
+                GradientDirection::TopToBottom => (
+                    Point::from_xy(width_px / 2.0, quiet_zone * pixel_size),
+                    Point::from_xy(width_px / 2.0, width_px - quiet_zone * pixel_size),
+                ),
+                GradientDirection::LeftToRight => (
+                    Point::from_xy(quiet_zone * pixel_size, width_px / 2.0),
+                    Point::from_xy(width_px - quiet_zone * pixel_size, width_px / 2.0),
+                ),
+                GradientDirection::TopLeftToBottomRight => (
+                    Point::from_xy(quiet_zone * pixel_size, quiet_zone * pixel_size),
+                    Point::from_xy(
+                        width_px - quiet_zone * pixel_size,
+                        width_px - quiet_zone * pixel_size,
+                    ),
+                ),
+                GradientDirection::BottomLeftToTopRight => (
+                    Point::from_xy(quiet_zone * pixel_size, width_px - quiet_zone * pixel_size),
+                    Point::from_xy(width_px - quiet_zone * pixel_size, quiet_zone * pixel_size),
+                ),
+                _ => unreachable!(),
+            };
+
+            LinearGradient::new(
+                start_point,
+                end_point,
+                stops,
+                SpreadMode::Pad,
+                Transform::identity(),
+            )
+            .ok_or("Failed to create linear gradient")?
+        };
+
+        paint.shader = shader;
     } else {
         paint.set_color(colors[0]);
     }
@@ -104,7 +129,14 @@ pub fn render_qr<G: QrGrid>(
                 let px = (x as f32 + quiet_zone) * pixel_size;
                 let py = (y as f32 + quiet_zone) * pixel_size;
 
-                let path = draw_module(options.shape, px, py, pixel_size);
+                let ctx = ModuleContext {
+                    top: y > 0 && grid.get_module(x, y - 1),
+                    bottom: y < size - 1 && grid.get_module(x, y + 1),
+                    left: x > 0 && grid.get_module(x - 1, y),
+                    right: x < size - 1 && grid.get_module(x + 1, y),
+                };
+
+                let path = draw_module(options.shape, px, py, pixel_size, &ctx);
                 pixmap.fill_path(
                     &path,
                     &paint,
