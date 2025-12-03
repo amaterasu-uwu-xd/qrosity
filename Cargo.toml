@@ -22,12 +22,12 @@ svg = { version = "0.18.0", optional = true }
 base64 = {version = "0.22.1", optional = true }
 
 [build-dependencies]
-cxx-qt-build = { version = "0.7.3", features = ["link_qt_object_files"] }
+cxx-qt-build = { version = "0.7.3", features = ["link_qt_object_files"], optional = true }
 
 [features]
 default = [ "cli" ]
 cli = []
-gui = ["dep:cxx", "dep:cxx-qt", "dep:cxx-qt-lib", "dep:cxx-qt-lib-extras"]
+gui = ["dep:cxx", "dep:cxx-qt", "dep:cxx-qt-lib", "dep:cxx-qt-lib-extras", "dep:cxx-qt-build"]
 batch = ["dep:rayon", "dep:serde"]
 svg = ["dep:svg", "dep:base64"]
 
