@@ -24,15 +24,36 @@ pub fn to_qr(data: String, config: QrConfig) {
 
     let qr = qr.unwrap();
 
-    // Call the renderer
-    match renderer::render_qr(&qr, &config, config.ppm as f32) {
-        Ok(pixmap) => {
-            if let Err(e) = pixmap.save_png(&config.output) {
-                eprintln!("Error saving QR code: {}", e);
-            } else {
-                println!("QR code saved to {}", &config.output);
+    // Check output format
+    if config.output.to_lowercase().ends_with(".svg") {
+        #[cfg(feature = "svg")]
+        {
+            match renderer::svg::render_svg(&qr, &config, config.ppm as f32) {
+                Ok(document) => {
+                    if let Err(e) = svg::save(&config.output, &document) {
+                        eprintln!("Error saving SVG: {}", e);
+                    } else {
+                        println!("QR code saved to {}", &config.output);
+                    }
+                },
+                Err(e) => eprintln!("Error rendering SVG: {}", e),
             }
-        },
-        Err(e) => eprintln!("Error rendering QR: {}", e),
+        }
+        #[cfg(not(feature = "svg"))]
+        {
+            eprintln!("Error: SVG support is not enabled. Compile with --features svg");
+        }
+    } else {
+        // Call the raster renderer
+        match renderer::png::render_qr(&qr, &config, config.ppm as f32) {
+            Ok(pixmap) => {
+                if let Err(e) = pixmap.save_png(&config.output) {
+                    eprintln!("Error saving QR code: {}", e);
+                } else {
+                    println!("QR code saved to {}", &config.output);
+                }
+            },
+            Err(e) => eprintln!("Error rendering QR: {}", e),
+        }
     }
 }
