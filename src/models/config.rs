@@ -122,8 +122,8 @@ pub struct QrConfig {
         arg(
             long,
             help = "Pixels per module",
-            default_value = "20",
-            value_parser = clap::value_parser!(u32).range(1..=500),
+            default_value = "25",
+            value_parser = clap::value_parser!(u32).range(25..=100),
             global = true
         )
     )]

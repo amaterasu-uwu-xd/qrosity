@@ -11,9 +11,9 @@ A terminal and desktop application for generating QR codes with advanced customi
 ### Command Line Interface (CLI)
 To generate a QR code from the command line, use the following command:
 ```bash
-qrosity "Text or URL to encode" --output output.png --ppm 300
+qrosity "Text or URL to encode" --output output.png
 # You can also send data via stdin
-echo "Text or URL to encode" | qrosity --output output.png --ppm 300 
+echo "Text or URL to encode" | qrosity -o output.png
 ```
 
 Use the `--help` flag to see all available options.
