@@ -1,7 +1,7 @@
-use svg::node::element::path::Data;
 use crate::models::FinderShape;
+use std::fmt::Write;
 
-pub fn append_finder_path(data: &mut Data, shape: FinderShape, grid_x: f32, grid_y: f32, scale: f32, quiet: f32) {
+pub fn append_finder_path(data: &mut String, shape: FinderShape, grid_x: f32, grid_y: f32, scale: f32, quiet: f32) {
     let x = (grid_x + quiet) * scale;
     let y = (grid_y + quiet) * scale;
     let size_7 = 7.0 * scale;
@@ -9,29 +9,17 @@ pub fn append_finder_path(data: &mut Data, shape: FinderShape, grid_x: f32, grid
     match shape {
         FinderShape::Square => {
             // Outer box (CW)
-            *data = data.clone().move_to((x, y))
-                .line_to((x + size_7, y))
-                .line_to((x + size_7, y + size_7))
-                .line_to((x, y + size_7))
-                .close();
+            let _ = write!(data, "M{x} {y} L{x1} {y} L{x1} {y1} L{x} {y1} Z ", x=x, y=y, x1=x+size_7, y1=y+size_7);
             
             // Inner hole (CCW)
             let size_5 = 5.0 * scale;
             let offset_1 = 1.0 * scale;
-            *data = data.clone().move_to((x + offset_1, y + offset_1))
-                .line_to((x + offset_1, y + offset_1 + size_5))
-                .line_to((x + offset_1 + size_5, y + offset_1 + size_5))
-                .line_to((x + offset_1 + size_5, y + offset_1))
-                .close();
+            let _ = write!(data, "M{x} {y} L{x} {y1} L{x1} {y1} L{x1} {y} Z ", x=x+offset_1, y=y+offset_1, x1=x+offset_1+size_5, y1=y+offset_1+size_5);
 
             // Center box (CW)
             let size_3 = 3.0 * scale;
             let offset_2 = 2.0 * scale;
-            *data = data.clone().move_to((x + offset_2, y + offset_2))
-                .line_to((x + offset_2 + size_3, y + offset_2))
-                .line_to((x + offset_2 + size_3, y + offset_2 + size_3))
-                .line_to((x + offset_2, y + offset_2 + size_3))
-                .close();
+            let _ = write!(data, "M{x} {y} L{x1} {y} L{x1} {y1} L{x} {y1} Z ", x=x+offset_2, y=y+offset_2, x1=x+offset_2+size_3, y1=y+offset_2+size_3);
         },
         FinderShape::Circle => {
             let cx = x + size_7 / 2.0;
@@ -39,24 +27,18 @@ pub fn append_finder_path(data: &mut Data, shape: FinderShape, grid_x: f32, grid
             
             // Outer Circle (CW)
             let r7 = size_7 / 2.0;
-            *data = data.clone()
-                .move_to((cx, cy - r7))
-                .elliptical_arc_to((r7, r7, 0, 1, 1, cx, cy + r7))
-                .elliptical_arc_to((r7, r7, 0, 1, 1, cx, cy - r7));
+            let _ = write!(data, "M{mx} {my} A{r} {r} 0 1 1 {ax1} {ay1} A{r} {r} 0 1 1 {mx} {my} ",
+                mx=cx, my=cy-r7, r=r7, ax1=cx, ay1=cy+r7);
 
             // Middle Circle (CCW) - Hole
             let r5 = (5.0 * scale) / 2.0;
-            *data = data.clone()
-                .move_to((cx, cy - r5))
-                .elliptical_arc_to((r5, r5, 0, 1, 0, cx, cy + r5))
-                .elliptical_arc_to((r5, r5, 0, 1, 0, cx, cy - r5));
+            let _ = write!(data, "M{mx} {my} A{r} {r} 0 1 0 {ax1} {ay1} A{r} {r} 0 1 0 {mx} {my} ",
+                mx=cx, my=cy-r5, r=r5, ax1=cx, ay1=cy+r5);
 
             // Inner Circle (CW)
             let r3 = (3.0 * scale) / 2.0;
-            *data = data.clone()
-                .move_to((cx, cy - r3))
-                .elliptical_arc_to((r3, r3, 0, 1, 1, cx, cy + r3))
-                .elliptical_arc_to((r3, r3, 0, 1, 1, cx, cy - r3));
+            let _ = write!(data, "M{mx} {my} A{r} {r} 0 1 1 {ax1} {ay1} A{r} {r} 0 1 1 {mx} {my} ",
+                mx=cx, my=cy-r3, r=r3, ax1=cx, ay1=cy+r3);
         },
         FinderShape::Rounded => {
             let size_5 = 5.0 * scale;
@@ -71,31 +53,32 @@ pub fn append_finder_path(data: &mut Data, shape: FinderShape, grid_x: f32, grid
             let mut append_rounded_rect = |x: f32, y: f32, s: f32, r: f32, cw: bool| {
                 let r = r.min(s / 2.0);
                 if cw {
-                    *data = data.clone()
-                        .move_to((x + r, y))
-                        .line_to((x + s - r, y))
-                        .quadratic_curve_to((x + s, y, x + s, y + r))
-                        .line_to((x + s, y + s - r))
-                        .quadratic_curve_to((x + s, y + s, x + s - r, y + s))
-                        .line_to((x + r, y + s))
-                        .quadratic_curve_to((x, y + s, x, y + s - r))
-                        .line_to((x, y + r))
-                        .quadratic_curve_to((x, y, x + r, y))
-                        .close();
+                    let _ = write!(data, "M{} {} L{} {} Q{} {} {} {} L{} {} Q{} {} {} {} L{} {} Q{} {} {} {} L{} {} Q{} {} {} {} Z ",
+                        x + r, y,
+                        x + s - r, y,
+                        x + s, y, x + s, y + r,
+                        x + s, y + s - r,
+                        x + s, y + s, x + s - r, y + s,
+                        x + r, y + s,
+                        x, y + s, x, y + s - r,
+                        x, y + r,
+                        x, y, x + r, y
+                    );
                 } else {
-                    *data = data.clone()
-                        .move_to((x + r, y))
-                        .quadratic_curve_to((x, y, x, y + r))
-                        .line_to((x, y + s - r))
-                        .quadratic_curve_to((x, y + s, x + r, y + s))
-                        .line_to((x + s - r, y + s))
-                        .quadratic_curve_to((x + s, y + s, x + s, y + s - r))
-                        .line_to((x + s, y + r))
-                        .quadratic_curve_to((x + s, y, x + s - r, y))
-                        .line_to((x + r, y))
-                        .close();
+                    let _ = write!(data, "M{} {} Q{} {} {} {} L{} {} Q{} {} {} {} L{} {} Q{} {} {} {} L{} {} Q{} {} {} {} L{} {} Z ",
+                        x + r, y,
+                        x, y, x, y + r,
+                        x, y + s - r,
+                        x, y + s, x + r, y + s,
+                        x + s - r, y + s,
+                        x + s, y + s, x + s, y + s - r,
+                        x + s, y + r,
+                        x + s, y, x + s - r, y,
+                        x + r, y
+                    );
                 }
             };
+            
             append_rounded_rect(x, y, size_7, r_outer, true);
             append_rounded_rect(x + offset_1, y + offset_1, size_5, r_inner, false);
             append_rounded_rect(x + offset_2, y + offset_2, size_3, r_center, true);

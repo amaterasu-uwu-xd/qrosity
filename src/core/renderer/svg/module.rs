@@ -1,44 +1,42 @@
-use svg::node::element::path::Data;
 use crate::models::ModuleShape;
 use crate::core::renderer::ModuleContext;
+use std::fmt::Write;
 
-pub fn append_module_path(data: &mut Data, shape: ModuleShape, x: f32, y: f32, size: f32, ctx: &ModuleContext) {
+pub fn append_module_path(data: &mut String, shape: ModuleShape, x: f32, y: f32, size: f32, ctx: &ModuleContext) {
     match shape {
         ModuleShape::Square => {
-            *data = data.clone().move_to((x, y))
-                .line_to((x + size, y))
-                .line_to((x + size, y + size))
-                .line_to((x, y + size))
-                .close();
+            let _ = write!(data, "M{x} {y} L{x1} {y} L{x1} {y1} L{x} {y1} Z ", x=x, y=y, x1=x+size, y1=y+size);
         }
         ModuleShape::Dots => {
             let r = size / 2.0 - (size * 0.05);
             let cx = x + size / 2.0;
             let cy = y + size / 2.0;
-            *data = data.clone().move_to((cx - r, cy))
-                .elliptical_arc_to((r, r, 0, 1, 0, cx + r, cy))
-                .elliptical_arc_to((r, r, 0, 1, 0, cx - r, cy));
+            // A rx ry x-axis-rotation large-arc-flag sweep-flag x y
+            let _ = write!(data, "M{mx} {my} A{r} {r} 0 1 0 {ax1} {ay1} A{r} {r} 0 1 0 {mx} {my} ", 
+                mx=cx-r, my=cy, r=r, ax1=cx+r, ay1=cy);
         }
         ModuleShape::Gapped => {
             let s = size - (size * 0.1);
             let r = size * 0.1;
-            *data = data.clone().move_to((x + r, y))
-                .line_to((x + s - r, y))
-                .quadratic_curve_to((x + s, y, x + s, y + r))
-                .line_to((x + s, y + s - r))
-                .quadratic_curve_to((x + s, y + s, x + s - r, y + s))
-                .line_to((x + r, y + s))
-                .quadratic_curve_to((x, y + s, x, y + s - r))
-                .line_to((x, y + r))
-                .quadratic_curve_to((x, y, x + r, y))
-                .close();
+            let _ = write!(data, "M{mx} {my} L{lx1} {ly1} Q{qx1} {qy1} {qx2} {qy2} L{lx2} {ly2} Q{qx3} {qy3} {qx4} {qy4} L{lx3} {ly3} Q{qx5} {qy5} {qx6} {qy6} L{lx4} {ly4} Q{qx7} {qy7} {qx8} {qy8} Z ",
+                mx=x+r, my=y,
+                lx1=x+s-r, ly1=y,
+                qx1=x+s, qy1=y, qx2=x+s, qy2=y+r,
+                lx2=x+s, ly2=y+s-r,
+                qx3=x+s, qy3=y+s, qx4=x+s-r, qy4=y+s,
+                lx3=x+r, ly3=y+s,
+                qx5=x, qy5=y+s, qx6=x, qy6=y+s-r,
+                lx4=x, ly4=y+r,
+                qx7=x, qy7=y, qx8=x+r, qy8=y
+            );
         }
         ModuleShape::Diamond => {
-            *data = data.clone().move_to((x + size / 2.0, y))
-                .line_to((x + size, y + size / 2.0))
-                .line_to((x + size / 2.0, y + size))
-                .line_to((x, y + size / 2.0))
-                .close();
+            let _ = write!(data, "M{mx} {my} L{lx1} {ly1} L{lx2} {ly2} L{lx3} {ly3} Z ",
+                mx=x+size/2.0, my=y,
+                lx1=x+size, ly1=y+size/2.0,
+                lx2=x+size/2.0, ly2=y+size,
+                lx3=x, ly3=y+size/2.0
+            );
         }
         ModuleShape::HorizontalBars => {
             let height = size * 0.6;
@@ -47,34 +45,37 @@ pub fn append_module_path(data: &mut Data, shape: ModuleShape, x: f32, y: f32, s
             let y_top = y + y_offset;
             let y_bottom = y + y_offset + height;
             let x_end = x + size;
+            
             if ctx.left {
-                *data = data.clone().move_to((x, y_top));
+                let _ = write!(data, "M{} {} ", x, y_top);
             } else {
-                *data = data.clone().move_to((x + r, y_top));
+                let _ = write!(data, "M{} {} ", x + r, y_top);
             }
+            
             if ctx.right {
-                *data = data.clone().line_to((x_end, y_top));
+                let _ = write!(data, "L{} {} ", x_end, y_top);
             } else {
-                *data = data.clone().line_to((x_end - r, y_top));
+                let _ = write!(data, "L{} {} ", x_end - r, y_top);
             }
+            
             if !ctx.right {
-                *data = data.clone().quadratic_curve_to((x_end, y_top, x_end, y_top + r))
-                    .quadratic_curve_to((x_end, y_bottom, x_end - r, y_bottom));
+                let _ = write!(data, "Q{} {} {} {} Q{} {} {} {} ", x_end, y_top, x_end, y_top + r, x_end, y_bottom, x_end - r, y_bottom);
             } else {
-                *data = data.clone().line_to((x_end, y_bottom));
+                let _ = write!(data, "L{} {} ", x_end, y_bottom);
             }
+            
             if ctx.left {
-                *data = data.clone().line_to((x, y_bottom));
+                let _ = write!(data, "L{} {} ", x, y_bottom);
             } else {
-                *data = data.clone().line_to((x + r, y_bottom));
+                let _ = write!(data, "L{} {} ", x + r, y_bottom);
             }
+            
             if !ctx.left {
-                *data = data.clone().quadratic_curve_to((x, y_bottom, x, y_bottom - r))
-                    .quadratic_curve_to((x, y_top, x + r, y_top));
+                let _ = write!(data, "Q{} {} {} {} Q{} {} {} {} ", x, y_bottom, x, y_bottom - r, x, y_top, x + r, y_top);
             } else {
-                *data = data.clone().line_to((x, y_top));
+                let _ = write!(data, "L{} {} ", x, y_top);
             }
-            *data = data.clone().close();
+            let _ = write!(data, "Z ");
         }
         ModuleShape::VerticalBars => {
             let width = size * 0.6;
@@ -83,58 +84,48 @@ pub fn append_module_path(data: &mut Data, shape: ModuleShape, x: f32, y: f32, s
             let x_left = x + x_offset;
             let x_right = x + x_offset + width;
             let y_end = y + size;
+            
             if ctx.top {
-                *data = data.clone().move_to((x_left, y));
+                let _ = write!(data, "M{} {} ", x_left, y);
             } else {
-                *data = data.clone().move_to((x_left, y + r));
+                let _ = write!(data, "M{} {} ", x_left, y + r);
             }
+            
             if !ctx.top {
-                *data = data.clone().quadratic_curve_to((x_left, y, x_left + r, y))
-                    .quadratic_curve_to((x_right, y, x_right, y + r));
+                let _ = write!(data, "Q{} {} {} {} Q{} {} {} {} ", x_left, y, x_left + r, y, x_right, y, x_right, y + r);
             } else {
-                *data = data.clone().line_to((x_right, y));
+                let _ = write!(data, "L{} {} ", x_right, y);
             }
+            
             if ctx.bottom {
-                *data = data.clone().line_to((x_right, y_end));
+                let _ = write!(data, "L{} {} ", x_right, y_end);
             } else {
-                *data = data.clone().line_to((x_right, y_end - r));
+                let _ = write!(data, "L{} {} ", x_right, y_end - r);
             }
+            
             if !ctx.bottom {
-                *data = data.clone().quadratic_curve_to((x_right, y_end, x_right - r, y_end))
-                    .quadratic_curve_to((x_left, y_end, x_left, y_end - r));
+                let _ = write!(data, "Q{} {} {} {} Q{} {} {} {} ", x_right, y_end, x_right - r, y_end, x_left, y_end, x_left, y_end - r);
             } else {
-                *data = data.clone().line_to((x_left, y_end));
+                let _ = write!(data, "L{} {} ", x_left, y_end);
             }
+            
             if ctx.top {
-                *data = data.clone().line_to((x_left, y));
+                let _ = write!(data, "L{} {} ", x_left, y);
             } else {
-                *data = data.clone().line_to((x_left, y + r));
+                let _ = write!(data, "L{} {} ", x_left, y + r);
             }
-            *data = data.clone().close();
+            let _ = write!(data, "Z ");
         }
         ModuleShape::Heart => {
             let s = size;
             let s_half = s / 2.0;
-            *data = data.clone().move_to((x + s_half, y + s * 0.3))
-                .cubic_curve_to((x + s_half, y, x + s * 0.95, y, x + s * 0.95, y + s * 0.3))
-                .cubic_curve_to((
-                    x + s * 0.95,
-                    y + s * 0.6,
-                    x + s * 0.65,
-                    y + s * 0.9,
-                    x + s_half,
-                    y + s,
-                ))
-                .cubic_curve_to((
-                    x + s * 0.35,
-                    y + s * 0.9,
-                    x + s * 0.05,
-                    y + s * 0.6,
-                    x + s * 0.05,
-                    y + s * 0.3,
-                ))
-                .cubic_curve_to((x + s * 0.05, y, x + s_half, y, x + s_half, y + s * 0.3))
-                .close();
+            let _ = write!(data, "M{} {} C{} {} {} {} {} {} C{} {} {} {} {} {} C{} {} {} {} {} {} C{} {} {} {} {} {} Z ",
+                x + s_half, y + s * 0.3,
+                x + s_half, y, x + s * 0.95, y, x + s * 0.95, y + s * 0.3,
+                x + s * 0.95, y + s * 0.6, x + s * 0.65, y + s * 0.9, x + s_half, y + s,
+                x + s * 0.35, y + s * 0.9, x + s * 0.05, y + s * 0.6, x + s * 0.05, y + s * 0.3,
+                x + s * 0.05, y, x + s_half, y, x + s_half, y + s * 0.3
+            );
         }
     }
 }

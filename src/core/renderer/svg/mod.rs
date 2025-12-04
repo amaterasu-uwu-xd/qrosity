@@ -2,7 +2,6 @@ use crate::models::{QrConfig, GradientDirection};
 use crate::core::renderer::{QrGrid, ModuleContext};
 use svg::Document;
 use svg::node::element::{Path, Rectangle, Definitions, LinearGradient, RadialGradient, Stop, Image};
-use svg::node::element::path::Data;
 
 pub mod module;
 pub mod finder;
@@ -44,10 +43,10 @@ pub fn render_svg<G: QrGrid>(
     let fill_id = "qr-fill";
     let mut use_gradient = false;
 
-    if options.colors.len() > 1 {
+    if options.foreground.len() > 1 {
         use_gradient = true;
-        let stops: Vec<Stop> = options.colors.iter().enumerate().map(|(i, color)| {
-            let offset = (i as f32 / (options.colors.len() - 1) as f32) * 100.0;
+        let stops: Vec<Stop> = options.foreground.iter().enumerate().map(|(i, color)| {
+            let offset = (i as f32 / (options.foreground.len() - 1) as f32) * 100.0;
             Stop::new()
                 .set("offset", format!("{}%", offset))
                 .set("stop-color", sanitize_color(color))
@@ -93,11 +92,11 @@ pub fn render_svg<G: QrGrid>(
     let fill_attr = if use_gradient {
         format!("url(#{})", fill_id)
     } else {
-        sanitize_color(options.colors.first().unwrap_or(&"#000000".to_string()))
+        sanitize_color(options.foreground.first().unwrap())
     };
 
     // Draw Modules
-    let mut path_data = Data::new();
+    let mut path_data = String::new();
 
     for y in 0..size {
         for x in 0..size {

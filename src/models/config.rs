@@ -79,7 +79,7 @@ pub struct QrConfig {
             value_parser = clap::value_parser!(u8).range(0..=7)
         )
     )]
-    pub mask_pattern: Option<u8>,
+    pub mask: Option<u8>,
 
     #[cfg_attr(
         feature = "cli",
@@ -91,7 +91,7 @@ pub struct QrConfig {
             num_args = 1..,
         )
     )]
-    pub colors: Vec<String>,
+    pub foreground: Vec<String>,
 
     #[cfg_attr(
         feature = "cli",
@@ -123,7 +123,7 @@ pub struct QrConfig {
             long,
             help = "Pixels per module",
             default_value = "20",
-            value_parser = clap::value_parser!(u32).range(1..=100),
+            value_parser = clap::value_parser!(u32).range(1..=500),
             global = true
         )
     )]
@@ -161,6 +161,7 @@ pub struct QrConfig {
         feature = "cli",
         arg(
             long,
+            short,
             help = "Path to an icon image to embed in the QR code",
             global = true
         )
@@ -171,6 +172,7 @@ pub struct QrConfig {
         feature = "cli",
         arg(
             long,
+            short,
             help = "Output file path", 
             global = true,
             // Default to "qr_%Y%m%d_%H%M%S.png"

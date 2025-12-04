@@ -14,7 +14,7 @@ pub fn to_qr(data: String, config: QrConfig) {
         } else {
             Version::MAX
         },
-        if let Some(mask) = config.mask_pattern {
+        if let Some(mask) = config.mask {
             Some(Mask::new(mask))
         } else {
             None

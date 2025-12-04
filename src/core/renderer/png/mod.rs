@@ -18,7 +18,7 @@ pub fn render_qr<G: QrGrid>(
     let width_px = (size as f32 + quiet_zone * 2.0) * pixel_size;
 
     let mut pixmap = Pixmap::new(width_px as u32, width_px as u32)
-        .ok_or("No se pudo crear el buffer de imagen")?;
+        .ok_or("Error creating image buffer")?;
     let bg_color = parse_color(&options.background)?;
     pixmap.fill(bg_color);
 
@@ -26,14 +26,9 @@ pub fn render_qr<G: QrGrid>(
     paint.anti_alias = true;
 
     let mut colors = Vec::new();
-    if options.colors.is_empty() {
-        colors.push(parse_color("#000000")?);
-    } else {
-        for color_hex in &options.colors {
-            colors.push(parse_color(color_hex)?);
-        }
+    for color_hex in &options.foreground {
+        colors.push(parse_color(color_hex)?);
     }
-
     if colors.len() > 1 {
         let stops: Vec<GradientStop> = colors
             .iter()
@@ -47,11 +42,8 @@ pub fn render_qr<G: QrGrid>(
         let shader = if options.gradient_direction == GradientDirection::Radial {
             let center_x = width_px / 2.0;
             let center_y = width_px / 2.0;
-            // El radio debe basarse en el tamaño del QR sin la quiet zone para que el gradiente
-            // se ajuste mejor al contenido visible.
             let qr_size_px = size as f32 * pixel_size;
             let radius = qr_size_px / 2.0 * 1.414;
-
             RadialGradient::new(
                 Point::from_xy(center_x, center_y),
                 Point::from_xy(center_x, center_y),
@@ -132,7 +124,6 @@ pub fn render_qr<G: QrGrid>(
         }
     }
 
-    // 4. Dibujar los 3 Patrones de Detección (Customizados)
     draw_finder(
         &mut pixmap,
         0.0,
@@ -188,8 +179,6 @@ fn draw_icon(pixmap: &mut Pixmap, ppm: u32, path: &str, size: f32, canvas_size: 
         tiny_skia::IntSize::from_wh(width as u32, height as u32).unwrap(),
     )
     .ok_or("Could not create pixmap from icon image")?;
-
-    // Size es el número de módulos del QR, tomamos un 20% 
     
     let target_icon_size = size * 0.2 * ppm as f32;
     let scale = target_icon_size / width.max(height);
