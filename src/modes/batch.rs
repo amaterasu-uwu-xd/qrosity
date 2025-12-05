@@ -39,16 +39,11 @@ pub fn run(input_path: String, threads: usize) {
 
     pool.install(|| {
         items.into_par_iter().for_each(|item| {
-            // Convert QrData to string content (e.g. "WIFI:...")
             let content = item.data.to_string();
             if content.is_empty() {
                 eprintln!("Skipping item with empty content (output: {})", item.config.output);
                 return;
             }
-            
-            // We need to clone config because to_qr takes ownership, 
-            // but we are in a parallel iterator so we own 'item'.
-            // Actually item is owned here, so we can move config.
             to_qr(content, item.config);
         });
     });

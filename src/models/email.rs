@@ -1,4 +1,5 @@
 use std::fmt;
+use super::QrConfig;
 
 #[cfg(feature = "cli")]
 use clap::Args;
@@ -21,6 +22,10 @@ pub struct EmailQr {
 
     #[cfg_attr(feature = "cli", arg(long, help = "BCC recipient"))]
     pub bcc: Option<String>,
+
+    #[cfg_attr(feature = "cli", command(flatten))]
+    #[cfg_attr(feature = "batch", serde(flatten))]
+    pub config: QrConfig,
 }
 
 impl fmt::Display for EmailQr {

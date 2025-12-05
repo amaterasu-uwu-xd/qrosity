@@ -1,4 +1,5 @@
 use std::fmt;
+use super::QrConfig;
 
 #[cfg(feature = "cli")]
 use clap::{Args, ValueEnum};
@@ -22,8 +23,12 @@ pub struct WifiQr {
     pub security: WifiSecurity,
     #[cfg_attr(feature = "cli", arg(long, help = "Password for the WiFi network"))]
     pub password: Option<String>,
-    #[cfg_attr(feature = "cli", arg(long, help = "Whether the WiFi network is hidden"))]
+    #[cfg_attr(feature = "cli", arg(long, help = "Hidden network"))]
     pub hidden: bool,
+
+    #[cfg_attr(feature = "cli", command(flatten))]
+    #[cfg_attr(feature = "batch", serde(flatten))]
+    pub config: QrConfig,
 }
 
 impl fmt::Display for WifiQr {

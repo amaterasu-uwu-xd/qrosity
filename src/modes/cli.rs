@@ -1,7 +1,13 @@
 use std::io::{self, Read, IsTerminal};
-use crate::{core::to_qr, models::{ QrConfig, QrData }};
+use crate::{core::to_qr, models::QrData};
 
-pub fn run(config: QrConfig, mut data: QrData) {
+pub fn run(mut data: QrData) {
+    let config = match &data {
+        QrData::Text(t) => t.config.clone(),
+        QrData::Wifi(w) => w.config.clone(),
+        QrData::Email(e) => e.config.clone(),
+    };
+
     if let QrData::Text(ref mut text_qr) = data {
         if text_qr.text.is_none() {
             if !io::stdin().is_terminal() {

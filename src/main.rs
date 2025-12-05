@@ -4,7 +4,7 @@ use clap::{Parser, Subcommand};
 use qrosity::modes::gui::run as run_gui_app;
 
 #[cfg(feature = "cli")]
-use qrosity::{models::{QrConfig, QrData, TextQr}, modes::cli::run as run_cli_app};
+use qrosity::{models::{QrData, TextQr}, modes::cli::run as run_cli_app};
 
 #[cfg(feature = "batch")]
 use qrosity::modes::batch::run as run_batch_app;
@@ -12,10 +12,6 @@ use qrosity::modes::batch::run as run_batch_app;
 #[derive(Parser)]
 #[command(author, version, about = "Qrosity - QR Code Generator")]
 struct App {
-    #[cfg(feature = "cli")]
-    #[command(flatten)]
-    config: QrConfig,
-
     #[cfg(feature = "cli")]
     #[command(flatten)]
     text: TextQr,
@@ -58,11 +54,11 @@ fn main() {
         },
         #[cfg(feature = "cli")]
         Some(AppMode::Qr(data)) => {
-            run_cli_app(app.config, data);
+            run_cli_app(data);
         },
         None => {
             #[cfg(feature = "cli")]
-            run_cli_app(app.config, QrData::Text(app.text));
+            run_cli_app(QrData::Text(app.text));
         }
     }
 }
