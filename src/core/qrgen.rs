@@ -893,6 +893,7 @@ static NUM_ERROR_CORRECTION_BLOCKS: [[i8; 41]; 4] = [
 
 /// The error correction level in a QR Code symbol.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, ValueEnum)]
+#[cfg_attr(feature = "batch", derive(serde::Serialize, serde::Deserialize))]
 pub enum QrCodeEcc {
 	/// The QR Code can tolerate about  7% erroneous codewords.
 	Low     ,

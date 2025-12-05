@@ -5,6 +5,7 @@ use clap::{Args, ValueEnum};
 
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "cli", derive(ValueEnum))]
+#[cfg_attr(feature = "batch", derive(serde::Serialize, serde::Deserialize))]
 pub enum WifiSecurity {
     WPA,
     WEP,
@@ -13,6 +14,7 @@ pub enum WifiSecurity {
 
 #[derive(Debug)]
 #[cfg_attr(feature = "cli", derive(Args))]
+#[cfg_attr(feature = "batch", derive(serde::Serialize, serde::Deserialize))]
 pub struct WifiQr {
     #[cfg_attr(feature = "cli", arg(long, help = "SSID of the WiFi network"))]
     pub ssid: String,

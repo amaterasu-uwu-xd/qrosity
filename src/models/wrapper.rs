@@ -6,6 +6,7 @@ use clap::Subcommand;
 
 #[derive(Debug)]
 #[cfg_attr(feature = "cli", derive(Subcommand))]
+#[cfg_attr(feature = "batch", derive(serde::Serialize, serde::Deserialize))]
 pub enum QrData {
     /// Generate a QR code from plain text. Recommended for URLs and other text data.
     #[cfg_attr(feature = "cli", command(skip))]

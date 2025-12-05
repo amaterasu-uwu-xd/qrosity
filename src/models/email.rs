@@ -5,6 +5,7 @@ use clap::Args;
 
 #[derive(Debug)]
 #[cfg_attr(feature = "cli", derive(Args))]
+#[cfg_attr(feature = "batch", derive(serde::Serialize, serde::Deserialize))]
 pub struct EmailQr {
     #[cfg_attr(feature = "cli", arg(long, help = "Recipient email address"))]
     pub to: String,

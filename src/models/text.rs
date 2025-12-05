@@ -3,6 +3,7 @@ use clap::Args;
 
 #[derive(Debug)]
 #[cfg_attr(feature = "cli", derive(Args))]
+#[cfg_attr(feature = "batch", derive(serde::Serialize, serde::Deserialize))]
 pub struct TextQr {
     #[cfg_attr(feature = "cli", arg(help = "Text to encode in the QR code"))]
     pub text: Option<String>,

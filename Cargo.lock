@@ -1144,6 +1144,7 @@ dependencies = [
  "image",
  "rayon",
  "serde",
+ "serde_json",
  "svg",
  "tiny-skia",
  "urlencoding",

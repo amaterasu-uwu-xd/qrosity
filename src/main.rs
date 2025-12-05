@@ -6,6 +6,9 @@ use qrosity::modes::gui::run as run_gui_app;
 #[cfg(feature = "cli")]
 use qrosity::{models::{QrConfig, QrData, TextQr}, modes::cli::run as run_cli_app};
 
+#[cfg(feature = "batch")]
+use qrosity::modes::batch::run as run_batch_app;
+
 #[derive(Parser)]
 #[command(author, version, about = "Qrosity - QR Code Generator")]
 struct App {
@@ -34,6 +37,9 @@ enum AppMode {
     Batch {
         #[arg(help = "Input file path")]
         input: String,
+
+        #[arg(long, short, help = "Maximum number of threads to use", default_value_t = 4)]
+        threads: usize,
     }
 }
 
@@ -47,9 +53,8 @@ fn main() {
             run_gui_app();
         },
         #[cfg(feature = "batch")]
-        Some(AppMode::Batch { input }) => {
-            // Placeholder for batch mode functionality
-            println!("Batch mode with input file: {}", input);
+        Some(AppMode::Batch { input, threads }) => {
+            run_batch_app(input, threads);
         },
         #[cfg(feature = "cli")]
         Some(AppMode::Qr(data)) => {

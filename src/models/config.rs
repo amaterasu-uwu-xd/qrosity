@@ -6,6 +6,7 @@ use clap::{Args, ValueEnum};
 // Formas para los módulos de datos (los puntitos pequeños)
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[cfg_attr(feature = "cli", derive(ValueEnum))]
+#[cfg_attr(feature = "batch", derive(serde::Serialize, serde::Deserialize))]
 pub enum ModuleShape {
     Square,
     Dots,
@@ -19,6 +20,7 @@ pub enum ModuleShape {
 // Formas para los "Ojos" (Patrones de detección de posición)
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[cfg_attr(feature = "cli", derive(ValueEnum))]
+#[cfg_attr(feature = "batch", derive(serde::Serialize, serde::Deserialize))]
 pub enum FinderShape {
     Square,
     Circle,
@@ -27,6 +29,7 @@ pub enum FinderShape {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[cfg_attr(feature = "cli", derive(ValueEnum))]
+#[cfg_attr(feature = "batch", derive(serde::Serialize, serde::Deserialize))]
 pub enum GradientDirection {
     TopToBottom,
     LeftToRight,
@@ -37,6 +40,8 @@ pub enum GradientDirection {
 
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "cli", derive(Args))]
+#[cfg_attr(feature = "batch", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "batch", serde(default))]
 pub struct QrConfig {
     #[cfg_attr(
         feature = "cli",
@@ -180,4 +185,46 @@ pub struct QrConfig {
         )
     )]
     pub output: String,
+}
+
+#[cfg(feature = "batch")]
+impl Default for ModuleShape {
+    fn default() -> Self {
+        Self::Square
+    }
+}
+
+#[cfg(feature = "batch")]
+impl Default for FinderShape {
+    fn default() -> Self {
+        Self::Square
+    }
+}
+
+#[cfg(feature = "batch")]
+impl Default for GradientDirection {
+    fn default() -> Self {
+        Self::TopLeftToBottomRight
+    }
+}
+
+#[cfg(feature = "batch")]
+impl Default for QrConfig {
+    fn default() -> Self {
+        Self {
+            quiet_zone: 4,
+            max_version: None,
+            ecl: qrgen::QrCodeEcc::Medium,
+            mask: None,
+            foreground: vec!["#000000".to_string()],
+            background: "#FFFFFF".to_string(),
+            gradient_direction: GradientDirection::default(),
+            ppm: 20,
+            boost_error_correction: true,
+            shape: ModuleShape::default(),
+            finder: FinderShape::default(),
+            icon: None,
+            output: String::new(),
+        }
+    }
 }
