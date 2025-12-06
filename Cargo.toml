@@ -5,7 +5,7 @@ edition = "2024"
 license = "MIT"
 description = "A terminal and desktop application for generating QR codes with advanced customization options."
 categories = ["command-line-utilities", "graphics", "image-processing"]
-keywords = ["qt", "image", "qrcode", "qr", "generator", "cli", "gui", "batch"]
+keywords = ["qt", "image", "qrcode", "qr"]
 
 [dependencies]
 chrono = "0.4.42"
