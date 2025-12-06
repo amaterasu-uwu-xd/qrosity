@@ -27,7 +27,7 @@ base64 = {version = "0.22.1", optional = true }
 cxx-qt-build = { version = "0.7.3", features = ["link_qt_object_files"], optional = true }
 
 [features]
-default = [ "cli" ]
+default = [ "cli", "svg" ]
 cli = []
 gui = ["dep:cxx", "dep:cxx-qt", "dep:cxx-qt-lib", "dep:cxx-qt-lib-extras", "dep:cxx-qt-build"]
 batch = ["dep:serde", "dep:serde_json", "dep:rayon"]
