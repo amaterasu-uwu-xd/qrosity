@@ -9,7 +9,8 @@ mod ffi {
 #[derive(Default)]
 pub struct DummyRustStruct;
 
-
+/// Runs the GUI mode.
+/// Initializes the Qt application and loads the QML interface.
 pub fn run() {
     use cxx_qt_lib::{QGuiApplication, QQmlApplicationEngine, QQuickStyle, QString, QUrl};
     use cxx_qt_lib_extras::QApplication;

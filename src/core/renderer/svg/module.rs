@@ -2,6 +2,8 @@ use crate::models::ModuleShape;
 use crate::core::renderer::ModuleContext;
 use std::fmt::Write;
 
+/// Appends the SVG path commands for a QR code module with the specified shape
+/// at the given position and size, considering its context within the QR code grid.
 pub fn append_module_path(data: &mut String, shape: ModuleShape, x: f32, y: f32, size: f32, ctx: &ModuleContext) {
     match shape {
         ModuleShape::Square => {

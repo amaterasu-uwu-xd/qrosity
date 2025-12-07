@@ -1,10 +1,19 @@
-use crate::{core::qrgen::{Mask, QrCode, QrSegment, Version}, models::QrConfig};
+use crate::{core::qrgen::{Mask, QrCode, QrSegment, Version}, models::QrItem};
 
 pub mod qrgen;
 mod renderer;
 
-pub fn to_qr(data: String, config: QrConfig) {
-    let segments = QrSegment::make_segments(&data);
+pub use qrgen::QrCodeEcc;
+
+/// Generates a QR code from the given data and configuration,
+/// then renders and saves it in the specified output format.
+/// The output format is determined by the file extension
+/// in the `config.output` field (e.g., ".png" or ".svg").
+pub fn to_qr<T: QrItem>(item: T) {
+    let content = item.to_string();
+    let config = item.config();
+
+    let segments = QrSegment::make_segments(&content);
     let qr = QrCode::encode_segments_advanced(
         &segments, 
         config.ecl,

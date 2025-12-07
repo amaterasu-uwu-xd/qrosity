@@ -1,13 +1,9 @@
 use std::io::{self, Read, IsTerminal};
 use crate::{core::to_qr, models::QrData};
 
+/// Runs the CLI mode.
+/// Processes the provided QrData, reading from stdin if necessary, and generates the QR code.
 pub fn run(mut data: QrData) {
-    let config = match &data {
-        QrData::Text(t) => t.config.clone(),
-        QrData::Wifi(w) => w.config.clone(),
-        QrData::Email(e) => e.config.clone(),
-    };
-
     if let QrData::Text(ref mut text_qr) = data {
         if text_qr.text.is_none() {
             if !io::stdin().is_terminal() {
@@ -34,5 +30,5 @@ pub fn run(mut data: QrData) {
          std::process::exit(1);
     }
 
-    to_qr(content, config);
+    to_qr(data);
 }

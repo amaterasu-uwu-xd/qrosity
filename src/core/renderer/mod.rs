@@ -5,6 +5,9 @@ pub mod png;
 #[cfg(feature = "svg")]
 pub mod svg;
 
+/// Provides context about the position of a module in the QR code.
+/// This is useful for rendering purposes, such as determining
+/// if a module is at the edge of the QR code.
 pub struct ModuleContext {
     pub top: bool,
     pub bottom: bool,
@@ -12,7 +15,7 @@ pub struct ModuleContext {
     pub right: bool,
 }
 
-// Asumimos que tienes un trait o struct para tu matriz
+/// Trait representing a QR code grid for rendering purposes.
 pub trait QrGrid {
     fn size(&self) -> usize;
     fn get_module(&self, x: usize, y: usize) -> bool;

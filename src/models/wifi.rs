@@ -1,5 +1,5 @@
 use std::fmt;
-use super::QrConfig;
+use super::{QrConfig, QrItem};
 
 #[cfg(feature = "cli")]
 use clap::{Args, ValueEnum};
@@ -13,6 +13,8 @@ pub enum WifiSecurity {
     NoPass,
 }
 
+/// Represents the data needed to generate a QR code for a WiFi network.
+/// This includes the SSID, security type, password, and whether the network is hidden.
 #[derive(Debug)]
 #[cfg_attr(feature = "cli", derive(Args))]
 #[cfg_attr(feature = "batch", derive(serde::Serialize, serde::Deserialize))]
@@ -51,5 +53,11 @@ impl fmt::Display for WifiQr {
             "WIFI:T:{};S:{};P:{};H:{};;",
             security_str, self.ssid, password_str, hidden_str
         )
+    }
+}
+
+impl QrItem for WifiQr {
+    fn config(&self) -> &QrConfig {
+        &self.config
     }
 }

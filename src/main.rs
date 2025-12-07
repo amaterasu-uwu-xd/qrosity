@@ -9,6 +9,7 @@ use qrosity::{models::{QrData, TextQr}, modes::cli::run as run_cli_app};
 #[cfg(feature = "batch")]
 use qrosity::modes::batch::run as run_batch_app;
 
+/// Main application structure for qrosity.
 #[derive(Parser)]
 #[command(author, version, about = "Qrosity - QR Code Generator")]
 struct App {
@@ -20,6 +21,7 @@ struct App {
     mode: Option<AppMode>,
 }
 
+/// Enum representing the different application modes: CLI, GUI, and Batch processing.
 #[derive(Subcommand)]
 enum AppMode {
     #[cfg(feature = "cli")]

@@ -9,6 +9,8 @@ pub mod finder;
 use module::append_module_path;
 use finder::append_finder_path;
 
+/// Renders a QR code grid into an SVG Document.
+/// If failed, returns an error message as a String.
 pub fn render_svg<G: QrGrid>(
     grid: &G,
     options: &QrConfig,

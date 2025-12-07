@@ -2,6 +2,7 @@ use tiny_skia::{Path, PathBuilder, Rect};
 use crate::models::ModuleShape;
 use crate::core::renderer::ModuleContext;
 
+/// Draws a QR code module with the specified shape at the given position and size.
 pub fn draw_module(shape: ModuleShape, x: f32, y: f32, size: f32, ctx: &ModuleContext) -> Path {
     let mut pb = PathBuilder::new();
     match shape {

@@ -1,8 +1,9 @@
-use super::QrConfig;
+use super::{QrConfig, QrItem};
 
 #[cfg(feature = "cli")]
 use clap::Args;
 
+/// Represents the data needed to generate a QR code for plain text (e.g., URLs).
 #[derive(Debug)]
 #[cfg_attr(feature = "cli", derive(Args))]
 #[cfg_attr(feature = "batch", derive(serde::Serialize, serde::Deserialize))]
@@ -22,5 +23,11 @@ impl std::fmt::Display for TextQr {
         } else {
             Ok(())
         }
+    }
+}
+
+impl QrItem for TextQr {
+    fn config(&self) -> &QrConfig {
+        &self.config
     }
 }

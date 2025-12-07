@@ -1,9 +1,11 @@
 use std::fmt;
-use super::QrConfig;
+use super::{QrConfig, QrItem};
 
 #[cfg(feature = "cli")]
 use clap::Args;
 
+/// Represents the data needed to generate a QR code for an email.
+/// This includes the recipient's email address, subject, body, and optional CC and BCC recipients.
 #[derive(Debug)]
 #[cfg_attr(feature = "cli", derive(Args))]
 #[cfg_attr(feature = "batch", derive(serde::Serialize, serde::Deserialize))]
@@ -52,5 +54,11 @@ impl fmt::Display for EmailQr {
         }
 
         Ok(())
+    }
+}
+
+impl QrItem for EmailQr {
+    fn config(&self) -> &QrConfig {
+        &self.config
     }
 }

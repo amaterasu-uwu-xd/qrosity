@@ -1,6 +1,7 @@
 use crate::models::FinderShape;
 use std::fmt::Write;
 
+/// Appends the SVG path data for a finder pattern at the specified grid position.
 pub fn append_finder_path(data: &mut String, shape: FinderShape, grid_x: f32, grid_y: f32, scale: f32, quiet: f32) {
     let x = (grid_x + quiet) * scale;
     let y = (grid_y + quiet) * scale;

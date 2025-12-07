@@ -1,6 +1,7 @@
 use tiny_skia::{PathBuilder, Rect, Pixmap, Paint, FillRule, Transform};
 use crate::models::FinderShape;
 
+/// Draws a finder pattern at the specified grid position on the pixmap.
 pub fn draw_finder(
     pixmap: &mut Pixmap,
     grid_x: f32,

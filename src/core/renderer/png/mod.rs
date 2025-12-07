@@ -8,6 +8,8 @@ pub mod finder;
 use module::draw_module;
 use finder::draw_finder;
 
+/// Renders a QR code grid into a PNG image represented as a Pixmap.
+/// If failed, returns an error message as a String.
 pub fn render_qr<G: QrGrid>(
     grid: &G,
     options: &QrConfig,
@@ -159,7 +161,7 @@ pub fn render_qr<G: QrGrid>(
     Ok(pixmap)
 }
 
-// --- Helper de Color ---
+/// Parses a hex color string (e.g., "#RRGGBB" or "RRGGBB") into a Color.
 fn parse_color(hex: &str) -> Result<Color, String> {
     let hex = hex.trim_start_matches('#');
     let r = u8::from_str_radix(&hex[0..2], 16).unwrap_or(0);
@@ -169,6 +171,8 @@ fn parse_color(hex: &str) -> Result<Color, String> {
     Ok(Color::from_rgba8(r, g, b, 255))
 }
 
+/// Draws an icon at the center of the QR code pixmap.
+/// The icon is scaled to fit within 20% of the QR code size ignoring quiet zones.
 fn draw_icon(pixmap: &mut Pixmap, ppm: u32, path: &str, size: f32, canvas_size: f32) -> Result<(), String> {
     let img_source = image::open(path).map_err(|e| e.to_string())?.to_rgba8();
     let width = img_source.width() as f32;

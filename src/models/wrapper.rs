@@ -1,9 +1,11 @@
 use std::fmt;
-use super::{ WifiQr, TextQr, EmailQr };
+use super::{ WifiQr, TextQr, EmailQr, QrConfig, QrItem };
 
 #[cfg(feature = "cli")]
 use clap::Subcommand;
 
+/// Enum representing different types of QR code data.
+/// Each variant holds the corresponding data structure for that QR code type.
 #[derive(Debug)]
 #[cfg_attr(feature = "cli", derive(Subcommand))]
 #[cfg_attr(feature = "batch", derive(serde::Serialize, serde::Deserialize))]
@@ -15,6 +17,16 @@ pub enum QrData {
     Wifi(WifiQr),
     /// Generate a QR code for sending an email.
     Email(EmailQr),
+}
+
+impl QrItem for QrData {
+    fn config(&self) -> &QrConfig {
+        match self {
+            QrData::Text(t) => t.config(),
+            QrData::Wifi(w) => w.config(),
+            QrData::Email(e) => e.config(),
+        }
+    }
 }
 
 impl fmt::Display for QrData {

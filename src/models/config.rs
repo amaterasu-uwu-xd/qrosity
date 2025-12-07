@@ -3,7 +3,8 @@ use crate::core::qrgen;
 #[cfg(feature = "cli")]
 use clap::{Args, ValueEnum};
 
-// Formas para los módulos de datos (los puntitos pequeños)
+/// QR code module shapes. 
+/// These shapes determine how each module (square) of the QR code is rendered.
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[cfg_attr(feature = "cli", derive(ValueEnum))]
 #[cfg_attr(feature = "batch", derive(serde::Serialize, serde::Deserialize))]
@@ -17,7 +18,8 @@ pub enum ModuleShape {
     VerticalBars,
 }
 
-// Formas para los "Ojos" (Patrones de detección de posición)
+// QR code finder pattern shapes. 
+/// These shapes determine how the position detection patterns ("eyes") of the QR code are rendered.
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[cfg_attr(feature = "cli", derive(ValueEnum))]
 #[cfg_attr(feature = "batch", derive(serde::Serialize, serde::Deserialize))]
@@ -27,6 +29,8 @@ pub enum FinderShape {
     Rounded,
 }
 
+/// QR code gradient directions.
+/// These directions determine how color gradients are applied to the QR code.
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[cfg_attr(feature = "cli", derive(ValueEnum))]
 #[cfg_attr(feature = "batch", derive(serde::Serialize, serde::Deserialize))]
@@ -38,6 +42,9 @@ pub enum GradientDirection {
     Radial,
 }
 
+/// Configuration options for generating and rendering a QR code.
+/// This struct holds various settings that control the appearance
+/// and behavior of the generated QR code.
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "cli", derive(Args))]
 #[cfg_attr(feature = "batch", derive(serde::Serialize, serde::Deserialize))]
@@ -178,28 +185,24 @@ pub struct QrConfig {
     pub output: String,
 }
 
-#[cfg(feature = "batch")]
 impl Default for ModuleShape {
     fn default() -> Self {
         Self::Square
     }
 }
 
-#[cfg(feature = "batch")]
 impl Default for FinderShape {
     fn default() -> Self {
         Self::Square
     }
 }
 
-#[cfg(feature = "batch")]
 impl Default for GradientDirection {
     fn default() -> Self {
         Self::TopLeftToBottomRight
     }
 }
 
-#[cfg(feature = "batch")]
 impl Default for QrConfig {
     fn default() -> Self {
         Self {
