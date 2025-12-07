@@ -1,5 +1,6 @@
 # qrosity
 A terminal and desktop application for generating QR codes with advanced customization options.
+![example qr code](./assets/example.png)
 
 ## Features
 - Generate QR codes from text, URLs, and other data.
@@ -42,32 +43,26 @@ You can generate multiple QR codes in a batch by providing a JSON file with the 
 [
   {
     "Text": {
-      "text": "https://example.com"
-    },
-    "output": "example_url.png",
-    "ppm": 20,
-    "foreground": ["#FF0000", "#0000FF"],
-    "gradient_direction": "LeftToRight"
+      "text": "Hello, World!",
+      "ppm": 20,
+      "foreground": "#000000",
+      "output": "hello_world_qr.svg"
+    }
   },
   {
     "Wifi": {
-      "ssid": "MyHomeNetwork",
+      "ssid": "MyNetwork",
+      "password": "SecurePass1234",
       "security": "WPA",
-      "password": "securepassword",
-      "hidden": false
-    },
-    "output": "wifi_config.svg",
-    "shape": "Dots",
-    "finder": "Rounded"
-  },
-  {
-    "Email": {
-      "to": "contact@example.com",
-      "subject": "Hello",
-      "body": "This is a test email."
-    },
-    "output": "email_qr.png",
-    "background": "#FFFF00"
+      "hidden": false,
+      "ppm": 25,
+      "foreground": [
+        "#00FF00",
+        "#FFFF00"
+      ],
+      "output": "wifi_qr_alter.svg",
+      "gradient_direction": "TopToBottom"
+    }
   }
 ]
 ```
@@ -75,6 +70,8 @@ You can then run the batch processing command:
 ```bash
 qrosity batch data.json
 ```
+
+All the options available in the CLI are also available in batch processing.
 
 > [!CAUTION]
 > The batch processing feature is still in development, major changes may occur.
@@ -87,3 +84,36 @@ qrosity gui
 
 > [!CAUTION]
 > The GUI feature is still in development, it just don't work.
+
+## Usage as a Library
+You can also use `qrosity` as a library in your Rust projects. Add the following to your `Cargo.toml`:
+```toml
+[dependencies]
+qrosity = { version = "*", no-default-features = true, features = ["svg"] } # Use no-default-features to avoid pulling in CLI/GUI dependencies. You can enable features as needed.
+```
+
+Then, you can use it in your code:
+```rust
+use qrosity::{core::to_qr, models::{EmailQr, QrConfig}};
+
+fn main() {
+    println!("Hello, world!");
+    let email_qr = EmailQr {
+        to: "example@example.com".to_string(),
+        subject: Some("Greetings".to_string()),
+        body: Some("Hello, this is a test email.".to_string()),
+        cc: None,
+        bcc: None,
+        config: QrConfig {
+            output: "help.png".to_string(),
+            ecl: qrosity::core::QrCodeEcc::Medium,
+            ..Default::default()
+        }
+    }; 
+    println!("Generated mailto URI: {}", email_qr);
+    to_qr(email_qr);
+}
+```
+
+> [!CAUTION]
+> This may change in future releases.

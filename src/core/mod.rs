@@ -1,6 +1,6 @@
 use crate::{core::qrgen::{Mask, QrCode, QrSegment, Version}, models::QrItem};
 
-pub mod qrgen;
+mod qrgen;
 mod renderer;
 
 pub use qrgen::QrCodeEcc;

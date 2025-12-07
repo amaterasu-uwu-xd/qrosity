@@ -3,3 +3,4 @@
 *.svg
 THIRD-PARTY-LICENSES.hbs
 *.json
+!assets/**
