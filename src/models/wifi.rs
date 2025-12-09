@@ -25,8 +25,20 @@ pub struct WifiQr {
     pub security: WifiSecurity,
     #[cfg_attr(feature = "cli", arg(long, help = "Password for the WiFi network"))]
     pub password: Option<String>,
-    #[cfg_attr(feature = "cli", arg(long, help = "Hidden network"))]
+    #[cfg_attr(feature = "cli", arg(long, help = "Is the network hidden?"))]
     pub hidden: bool,
+
+    /// Output file path.
+    #[cfg_attr(
+        feature = "cli",
+        arg(
+            long,
+            short,
+            help = "Output file path", 
+            default_value_t = chrono::Local::now().format("qr_%Y-%m-%d_%H:%M:%S.png").to_string()
+        )
+    )]
+    pub output: String,
 
     #[cfg_attr(feature = "cli", command(flatten))]
     #[cfg_attr(feature = "batch", serde(flatten))]
@@ -59,5 +71,9 @@ impl fmt::Display for WifiQr {
 impl QrItem for WifiQr {
     fn config(&self) -> &QrConfig {
         &self.config
+    }
+
+    fn output(&self) -> &str {
+        &self.output
     }
 }

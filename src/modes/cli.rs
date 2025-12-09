@@ -1,5 +1,5 @@
 use std::io::{self, Read, IsTerminal};
-use crate::{core::to_qr, models::QrData};
+use crate::{core::generate_qr, models::{QrData, QrItem}};
 
 /// Runs the CLI mode.
 /// Processes the provided QrData, reading from stdin if necessary, and generates the QR code.
@@ -18,7 +18,7 @@ pub fn run(mut data: QrData) {
                     }
                 }
             } else {
-                eprintln!("Error: Text argument is required or input must be piped.");
+                eprintln!("Error: Text argument is required or provide input via stdin.");
                 std::process::exit(1);
             }
         }
@@ -30,5 +30,17 @@ pub fn run(mut data: QrData) {
          std::process::exit(1);
     }
 
-    to_qr(data);
+    match generate_qr(&data) {
+        Ok(renderer) => {
+            let output = data.output();
+            match renderer.save(output) {
+                Ok(final_path) => println!("QR code saved to {}", final_path),
+                Err(e) => eprintln!("Error saving QR: {}", e),
+            }
+        },
+        Err(e) => {
+            eprintln!("{}", e);
+            std::process::exit(1);
+        }
+    }
 }

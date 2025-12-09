@@ -1,15 +1,15 @@
 use crate::models::{QrConfig, GradientDirection};
-use crate::core::renderer::QrGrid;
+use crate::core::renderer::{QrGrid, QrRenderer};
 use std::fmt::Write;
 
-pub mod module;
-pub mod finder;
+mod module;
+mod finder;
 
 use module::append_module_path;
 use finder::append_finder_path;
 
 /// Renders a QR code grid into an SVG String.
-pub fn render_svg<G: QrGrid>(
+pub fn render_svg<G: QrGrid + ?Sized>(
     grid: &G,
     options: &QrConfig,
     pixel_size: f32,
@@ -205,7 +205,7 @@ fn append_icon(
          }
 
          if let (Some(w_px), Some(h_px)) = (width, height) {
-                let icon_size = size as f32 * 0.2 * pixel_size;
+                let icon_size = size as f32 * 0.25 * pixel_size;
                 let scale = icon_size / (w_px.max(h_px) as f32);
                 let w = w_px as f32 * scale;
                 let h = h_px as f32 * scale;
@@ -255,4 +255,29 @@ fn encode_base64(input: &[u8]) -> String {
         i += 3;
     }
     output
+}
+
+pub struct SvgRenderer {
+    data: String,
+}
+
+impl SvgRenderer {
+    pub fn new(grid: &dyn QrGrid, config: &QrConfig) -> Result<Self, String> {
+        let data = render_svg(grid, config, config.ppm as f32)?;
+        Ok(Self {
+            data,
+        })
+    }
+}
+
+impl QrRenderer for SvgRenderer {
+    fn save(&self, path: &str) -> Result<String, String> {
+        let mut path_buf = std::path::PathBuf::from(path);
+        if path_buf.extension().is_none() {
+            path_buf.set_extension("svg");
+        }
+        let final_path = path_buf.to_str().ok_or("Invalid path")?.to_string();
+        std::fs::write(&final_path, &self.data).map_err(|e| e.to_string())?;
+        Ok(final_path)
+    }
 }

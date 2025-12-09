@@ -27,6 +27,14 @@ impl QrItem for QrData {
             QrData::Email(e) => e.config(),
         }
     }
+
+    fn output(&self) -> &str {
+        match self {
+            QrData::Text(t) => t.output(),
+            QrData::Wifi(w) => w.output(),
+            QrData::Email(e) => e.output(),
+        }
+    }
 }
 
 impl fmt::Display for QrData {

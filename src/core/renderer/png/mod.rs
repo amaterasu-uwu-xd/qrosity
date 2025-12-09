@@ -1,16 +1,16 @@
-use crate::models::{QrConfig, GradientDirection};
+use crate::models::{QrConfig, GradientDirection, OutputFormat};
 use tiny_skia::*;
-use crate::core::renderer::QrGrid;
+use crate::core::renderer::{QrGrid, QrRenderer};
 
-pub mod module;
-pub mod finder;
+mod module;
+mod finder;
 
 use module::draw_module;
 use finder::draw_finder;
 
 /// Renders a QR code grid into a PNG image represented as a Pixmap.
 /// If failed, returns an error message as a String.
-pub fn render_qr<G: QrGrid>(
+pub fn render_qr<G: QrGrid + ?Sized>(
     grid: &G,
     options: &QrConfig,
     pixel_size: f32,
@@ -166,7 +166,16 @@ fn parse_color(hex: &str) -> Result<Color, String> {
 /// Draws an icon at the center of the QR code pixmap.
 /// The icon is scaled to fit within 20% of the QR code size ignoring quiet zones.
 fn draw_icon(pixmap: &mut Pixmap, ppm: u32, path: &str, size: f32, canvas_size: f32) -> Result<(), String> {
-    let img_source = image::open(path).map_err(|e| e.to_string())?.to_rgba8();
+    let mut img_source = image::open(path).map_err(|e| e.to_string())?.to_rgba8();
+    
+    // Premultiply alpha for tiny-skia
+    for pixel in img_source.pixels_mut() {
+        let alpha = pixel[3] as f32 / 255.0;
+        pixel[0] = (pixel[0] as f32 * alpha + 0.5) as u8;
+        pixel[1] = (pixel[1] as f32 * alpha + 0.5) as u8;
+        pixel[2] = (pixel[2] as f32 * alpha + 0.5) as u8;
+    }
+
     let width = img_source.width() as f32;
     let height = img_source.height() as f32;
 
@@ -176,7 +185,7 @@ fn draw_icon(pixmap: &mut Pixmap, ppm: u32, path: &str, size: f32, canvas_size: 
     )
     .ok_or("Could not create pixmap from icon image")?;
     
-    let target_icon_size = size * 0.2 * ppm as f32;
+    let target_icon_size = size * 0.25 * ppm as f32;
     let scale = target_icon_size / width.max(height);
     let translate_x = (canvas_size - (width * scale)) / 2.0;
     let translate_y = (canvas_size - (height * scale)) / 2.0;
@@ -193,30 +202,82 @@ fn draw_icon(pixmap: &mut Pixmap, ppm: u32, path: &str, size: f32, canvas_size: 
 
 /// Saves the rendered Pixmap to a file.
 /// Supports PNG natively via tiny-skia, and other formats (JPG, BMP, etc.) via the image crate.
-pub fn save_image(pixmap: &Pixmap, path: &str) -> Result<(), String> {
-    let path_obj = std::path::Path::new(path);
-    let extension = path_obj.extension()
-        .and_then(|ext| ext.to_str())
-        .map(|s| s.to_lowercase());
+pub fn save_image(pixmap: &Pixmap, path: &str, format: OutputFormat) -> Result<String, String> {
+    let mut path_buf = std::path::PathBuf::from(path);
+    if path_buf.extension().is_none() {
+        let ext = match format {
+            OutputFormat::Png => "png",
+            OutputFormat::Jpg | OutputFormat::Jpeg => "jpg",
+            OutputFormat::Bmp => "bmp",
+            OutputFormat::Tiff => "tiff",
+            OutputFormat::Gif => "gif",
+            OutputFormat::Ico => "ico",
+            OutputFormat::Webp => "webp",
+            _ => "png",
+        };
+        path_buf.set_extension(ext);
+    }
+    let final_path = path_buf.to_str().ok_or("Invalid path")?.to_string();
 
-    if extension.as_deref() == Some("png") {
-        pixmap.save_png(path).map_err(|e| format!("Error saving PNG: {}", e))
+    if format == OutputFormat::Png {
+        pixmap.save_png(&final_path).map_err(|e| format!("Error saving PNG: {}", e))?;
     } else {
         let width = pixmap.width();
         let height = pixmap.height();
-        let data = pixmap.data().to_vec();
+        
+        // Demultiply alpha since tiny-skia uses premultiplied alpha
+        let data: Vec<u8> = pixmap.pixels()
+            .iter()
+            .flat_map(|p| {
+                let c = p.demultiply();
+                [c.red(), c.green(), c.blue(), c.alpha()]
+            })
+            .collect();
 
         let img = image::RgbaImage::from_raw(width, height, data)
             .ok_or("Error creating image buffer from pixmap")?;
         
         let dynamic_image = image::DynamicImage::ImageRgba8(img);
 
-        // Handle formats that don't support alpha
-        let output_image = match extension.as_deref() {
-            Some("jpg") | Some("jpeg") => image::DynamicImage::ImageRgb8(dynamic_image.into_rgb8()),
+        // Handle formats that don't support alpha or need specific conversion
+        let output_image = match format {
+            OutputFormat::Jpg | OutputFormat::Jpeg | OutputFormat::Bmp => image::DynamicImage::ImageRgb8(dynamic_image.into_rgb8()),
             _ => dynamic_image,
         };
 
-        output_image.save(path).map_err(|e| format!("Error saving image: {}", e))
+        let image_format = match format {
+            OutputFormat::Jpg | OutputFormat::Jpeg => image::ImageFormat::Jpeg,
+            OutputFormat::Bmp => image::ImageFormat::Bmp,
+            OutputFormat::Tiff => image::ImageFormat::Tiff,
+            OutputFormat::Gif => image::ImageFormat::Gif,
+            OutputFormat::Ico => image::ImageFormat::Ico,
+            OutputFormat::Webp => image::ImageFormat::WebP,
+            OutputFormat::Png => image::ImageFormat::Png,
+            _ => return Err(format!("Unsupported format: {:?}", format)),
+        };
+
+        output_image.save_with_format(&final_path, image_format).map_err(|e| format!("Error saving image: {}", e))?;
+    }
+    Ok(final_path)
+}
+
+pub struct PngRenderer {
+    pixmap: Pixmap,
+    format: OutputFormat,
+}
+
+impl PngRenderer {
+    pub fn new(grid: &dyn QrGrid, config: &QrConfig) -> Result<Self, String> {
+        let pixmap = render_qr(grid, config, config.ppm as f32)?;
+        Ok(Self {
+            pixmap,
+            format: config.format,
+        })
+    }
+}
+
+impl QrRenderer for PngRenderer {
+    fn save(&self, path: &str) -> Result<String, String> {
+        save_image(&self.pixmap, path, self.format)
     }
 }

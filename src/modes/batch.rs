@@ -1,5 +1,5 @@
 use crate::models::{QrData, QrItem};
-use crate::core::to_qr;
+use crate::core::generate_qr;
 use std::fs::File;
 use std::io::BufReader;
 use rayon::prelude::*;
@@ -35,10 +35,19 @@ pub fn run(input_path: String, threads: usize) {
         items.into_par_iter().for_each(|item| {
             let content = item.to_string();
             if content.is_empty() {
-                eprintln!("Skipping item with empty content (output: {})", item.config().output);
+                eprintln!("Skipping item with empty content (output: {})", item.output());
                 return;
             }
-            to_qr(item);
+            match generate_qr(&item) {
+                Ok(renderer) => {
+                    let output = item.output();
+                    match renderer.save(output) {
+                        Ok(final_path) => println!("QR code saved to {}", final_path),
+                        Err(e) => eprintln!("Error saving QR for {}: {}", output, e),
+                    }
+                },
+                Err(e) => eprintln!("Error generating QR for {}: {}", item.output(), e),
+            }
         });
     });
 }

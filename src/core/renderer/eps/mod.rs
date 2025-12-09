@@ -1,14 +1,15 @@
 use crate::models::{QrConfig, GradientDirection};
-use crate::core::renderer::QrGrid;
+use crate::core::renderer::{QrGrid, QrRenderer};
 use std::fmt::Write;
 
-pub mod module;
-pub mod finder;
+mod module;
+mod finder;
 
 use module::append_module_path;
 use finder::append_finder_path;
 
-pub fn render_eps<G: QrGrid>(
+/// Renders the QR code grid into an EPS string based on the provided configuration.
+pub fn render_eps<G: QrGrid + ?Sized>(
     grid: &G,
     options: &QrConfig,
     pixel_size: f32,
@@ -104,39 +105,42 @@ pub fn render_eps<G: QrGrid>(
 
     // Icon
     if let Some(icon_path) = &options.icon {
-        // Load image using `image` crate (already in dependencies)
-        if let Ok(img) = image::open(icon_path) {
-            let img = img.to_rgba8();
-            let (w, h) = img.dimensions();
-            let icon_size = (size as f32 * pixel_size) * 0.2;
-            let x = (width_px - icon_size) / 2.0;
-            let y = (height_px - icon_size) / 2.0;
-            
-            writeln!(&mut eps, "gsave").unwrap();
-            writeln!(&mut eps, "{} {} translate", x, y).unwrap();
-            writeln!(&mut eps, "{} {} scale", icon_size, icon_size).unwrap();
-            
-            writeln!(&mut eps, "/picstr {} string def", w * 3).unwrap(); // RGB
-            writeln!(&mut eps, "{} {} 8", w, h).unwrap();
-            writeln!(&mut eps, "[{} 0 0 {} 0 0]", w, h).unwrap(); // Matrix
-            writeln!(&mut eps, "{{ currentfile picstr readhexstring pop }}").unwrap();
-            writeln!(&mut eps, "false 3").unwrap(); // false = single source, 3 = RGB
-            writeln!(&mut eps, "colorimage").unwrap();
-            
-            // Write hex data
-            for pixel in img.pixels() {
-                // RGB only, ignore alpha for EPS simple implementation
-                write!(&mut eps, "{:02x}{:02x}{:02x}", pixel[0], pixel[1], pixel[2]).unwrap();
-            }
-            writeln!(&mut eps, "").unwrap();
-            
-            writeln!(&mut eps, "grestore").unwrap();
-        }
+        append_icon(&mut eps, icon_path, size, pixel_size, width_px, height_px);
     }
 
     writeln!(&mut eps, "%%EOF").unwrap();
 
     Ok(eps)
+}
+
+fn append_icon(eps: &mut String, icon_path: &str, size: usize, pixel_size: f32, width_px: f32, height_px: f32) {
+    if let Ok(img) = image::open(icon_path) {
+        let img = img.to_rgba8();
+        let (w, h) = img.dimensions();
+        let icon_size = (size as f32 * pixel_size) * 0.25;
+        let x = (width_px - icon_size) / 2.0;
+        let y = (height_px - icon_size) / 2.0;
+        
+        writeln!(eps, "gsave").unwrap();
+        writeln!(eps, "{} {} translate", x, y).unwrap();
+        writeln!(eps, "{} {} scale", icon_size, icon_size).unwrap();
+        
+        writeln!(eps, "/picstr {} string def", w * 3).unwrap(); // RGB
+        writeln!(eps, "{} {} 8", w, h).unwrap();
+        writeln!(eps, "[{} 0 0 {} 0 0]", w, h).unwrap(); // Matrix
+        writeln!(eps, "{{ currentfile picstr readhexstring pop }}").unwrap();
+        writeln!(eps, "false 3").unwrap(); // false = single source, 3 = RGB
+        writeln!(eps, "colorimage").unwrap();
+        
+        // Write hex data
+        for pixel in img.pixels() {
+            // RGB only, ignore alpha for EPS simple implementation
+            write!(eps, "{:02x}{:02x}{:02x}", pixel[0], pixel[1], pixel[2]).unwrap();
+        }
+        writeln!(eps, "").unwrap();
+        
+        writeln!(eps, "grestore").unwrap();
+    }
 }
 
 fn parse_color(hex: &str) -> Option<(f32, f32, f32)> {
@@ -198,5 +202,30 @@ fn ps_function(colors: &[(f32, f32, f32)]) -> String {
     s.push_str(" ] >>");
     
     s
+}
+
+pub struct EpsRenderer {
+    data: String,
+}
+
+impl EpsRenderer {
+    pub fn new(grid: &dyn QrGrid, config: &QrConfig) -> Result<Self, String> {
+        let data = render_eps(grid, config, config.ppm as f32)?;
+        Ok(Self {
+            data,
+        })
+    }
+}
+
+impl QrRenderer for EpsRenderer {
+    fn save(&self, path: &str) -> Result<String, String> {
+        let mut path_buf = std::path::PathBuf::from(path);
+        if path_buf.extension().is_none() {
+            path_buf.set_extension("eps");
+        }
+        let final_path = path_buf.to_str().ok_or("Invalid path")?.to_string();
+        std::fs::write(&final_path, &self.data).map_err(|e| e.to_string())?;
+        Ok(final_path)
+    }
 }
 

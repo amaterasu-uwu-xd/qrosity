@@ -4,6 +4,12 @@ pub mod png;
 pub mod svg;
 pub mod eps;
 
+/// Trait for QR code renderers.
+/// Allows rendering to an in-memory format and saving to a file.
+pub trait QrRenderer {
+    fn save(&self, path: &str) -> Result<String, String>;
+}
+
 /// Provides context about the position of a module in the QR code.
 /// This is useful for rendering purposes, such as determining
 /// if a module is at the edge of the QR code.

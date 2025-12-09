@@ -42,6 +42,32 @@ pub enum GradientDirection {
     Radial,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "cli", derive(ValueEnum))]
+#[cfg_attr(feature = "batch", derive(serde::Serialize, serde::Deserialize))]
+pub enum OutputFormat {
+    /// Output as PNG image.
+    Png,
+    /// Output as JPEG image.
+    Jpg,
+    /// Output as JPEG image.
+    Jpeg,
+    /// Output as BMP image.
+    Bmp,
+    /// Output as TIFF image.
+    Tiff,
+    /// Output as GIF image.
+    Gif,
+    /// Output as ICO image.
+    Ico,
+    /// Output as WebP image.
+    Webp,
+    /// Output as SVG vector graphic.
+    Svg,
+    /// Output as EPS vector graphic.
+    Eps,
+}
+
 /// Configuration options for generating and rendering a QR code.
 /// This struct holds various settings that control the appearance
 /// and behavior of the generated QR code.
@@ -190,19 +216,16 @@ pub struct QrConfig {
     )]
     pub icon: Option<String>,
 
-    /// Output file path.
-    /// The extension determines the image format (e.g., .png, .svg).
+    /// Output format.
     #[cfg_attr(
         feature = "cli",
         arg(
             long,
-            short,
-            help = "Output file path", 
-            // Default to "qr_%Y%m%d_%H%M%S.png"
-            default_value_t = chrono::Local::now().format("qr_%Y-%m-%d_%H:%M:%S.png").to_string()
+            value_enum,
+            default_value_t = OutputFormat::Png,
         )
     )]
-    pub output: String,
+    pub format: OutputFormat,
 }
 
 impl Default for ModuleShape {
@@ -238,7 +261,7 @@ impl Default for QrConfig {
             shape: ModuleShape::default(),
             finder: FinderShape::default(),
             icon: None,
-            output: chrono::Local::now().format("qr_%Y-%m-%d_%H:%M:%S.png").to_string(),
+            format: OutputFormat::Png,
         }
     }
 }

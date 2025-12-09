@@ -22,8 +22,20 @@ pub struct EmailQr {
     #[cfg_attr(feature = "cli", arg(long, help = "CC recipient"))]
     pub cc: Option<String>,
 
-    #[cfg_attr(feature = "cli", arg(long, help = "BCC recipient"))]
+    #[cfg_attr(feature = "cli", arg(long, help = "BCC recipients"))]
     pub bcc: Option<String>,
+
+    /// Output file path.
+    #[cfg_attr(
+        feature = "cli",
+        arg(
+            long,
+            short,
+            help = "Output file path", 
+            default_value_t = chrono::Local::now().format("qr_%Y-%m-%d_%H:%M:%S.png").to_string()
+        )
+    )]
+    pub output: String,
 
     #[cfg_attr(feature = "cli", command(flatten))]
     #[cfg_attr(feature = "batch", serde(flatten))]
@@ -60,5 +72,9 @@ impl fmt::Display for EmailQr {
 impl QrItem for EmailQr {
     fn config(&self) -> &QrConfig {
         &self.config
+    }
+
+    fn output(&self) -> &str {
+        &self.output
     }
 }
