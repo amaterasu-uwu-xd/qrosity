@@ -1,12 +1,12 @@
-use crate::models::{QrConfig, GradientDirection};
-use crate::core::renderer::{QrGrid, QrRenderer};
+use crate::core::renderer::{QrGrid, QrRenderer, utils};
+use crate::models::{GradientDirection, QrConfig};
 use std::fmt::Write;
 
-mod module;
 mod finder;
+mod module;
 
-use module::append_module_path;
 use finder::append_finder_path;
+use module::append_module_path;
 
 /// Renders a QR code grid into an SVG String.
 pub fn render_svg<G: QrGrid + ?Sized>(
@@ -27,24 +27,35 @@ pub fn render_svg<G: QrGrid + ?Sized>(
     };
 
     let mut svg = String::new();
-    
+
     // SVG Header
     writeln!(&mut svg, r#"<svg viewBox="0 0 {w} {h}" width="{w}" height="{h}" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">"#, w=width_px, h=width_px).unwrap();
 
     // Background
-    writeln!(&mut svg, r#"<rect width="100%" height="100%" fill="{}" />"#, sanitize_color(&options.background)).unwrap();
+    writeln!(
+        &mut svg,
+        r#"<rect width="100%" height="100%" fill="{}" />"#,
+        sanitize_color(&options.background)
+    )
+    .unwrap();
 
     // Definitions for Gradients
     let fill_id = "qr-fill";
-    let mut fill_attr = sanitize_color(options.foreground.first().unwrap_or(&"#000000".to_string()));
+    let mut fill_attr =
+        sanitize_color(options.foreground.first().unwrap_or(&"#000000".to_string()));
 
     if options.foreground.len() > 1 {
         fill_attr = format!("url(#{})", fill_id);
-        
+
         writeln!(&mut svg, "<defs>").unwrap();
-        
+
         if options.gradient_direction == GradientDirection::Radial {
-            writeln!(&mut svg, r#"<radialGradient id="{}" cx="50%" cy="50%" r="70.7%" fx="50%" fy="50%">"#, fill_id).unwrap();
+            writeln!(
+                &mut svg,
+                r#"<radialGradient id="{}" cx="50%" cy="50%" r="70.7%" fx="50%" fy="50%">"#,
+                fill_id
+            )
+            .unwrap();
         } else {
             let (x1, y1, x2, y2) = match options.gradient_direction {
                 GradientDirection::TopToBottom => ("50%", "0%", "50%", "100%"),
@@ -53,12 +64,23 @@ pub fn render_svg<G: QrGrid + ?Sized>(
                 GradientDirection::BottomLeftToTopRight => ("0%", "100%", "100%", "0%"),
                 _ => ("0%", "0%", "100%", "100%"),
             };
-            writeln!(&mut svg, r#"<linearGradient id="{}" x1="{}" y1="{}" x2="{}" y2="{}">"#, fill_id, x1, y1, x2, y2).unwrap();
+            writeln!(
+                &mut svg,
+                r#"<linearGradient id="{}" x1="{}" y1="{}" x2="{}" y2="{}">"#,
+                fill_id, x1, y1, x2, y2
+            )
+            .unwrap();
         }
 
         for (i, color) in options.foreground.iter().enumerate() {
             let offset = (i as f32 / (options.foreground.len() - 1) as f32) * 100.0;
-            writeln!(&mut svg, r#"<stop offset="{}%" stop-color="{}" />"#, offset, sanitize_color(color)).unwrap();
+            writeln!(
+                &mut svg,
+                r#"<stop offset="{}%" stop-color="{}" />"#,
+                offset,
+                sanitize_color(color)
+            )
+            .unwrap();
         }
 
         if options.gradient_direction == GradientDirection::Radial {
@@ -74,7 +96,9 @@ pub fn render_svg<G: QrGrid + ?Sized>(
 
     for y in 0..size {
         for x in 0..size {
-            if grid.is_finder(x, y) { continue; }
+            if grid.is_finder(x, y) {
+                continue;
+            }
 
             if grid.is_dark(x, y) {
                 let px = (x as f32 + quiet_zone) * pixel_size;
@@ -89,19 +113,47 @@ pub fn render_svg<G: QrGrid + ?Sized>(
 
     // Draw Finders
     // Top Left
-    append_finder_path(&mut path_data, options.finder, 0.0, 0.0, pixel_size, quiet_zone);
+    append_finder_path(
+        &mut path_data,
+        options.finder,
+        0.0,
+        0.0,
+        pixel_size,
+        quiet_zone,
+    );
     // Top Right
-    append_finder_path(&mut path_data, options.finder, (size - 7) as f32, 0.0, pixel_size, quiet_zone);
+    append_finder_path(
+        &mut path_data,
+        options.finder,
+        (size - 7) as f32,
+        0.0,
+        pixel_size,
+        quiet_zone,
+    );
     // Bottom Left
-    append_finder_path(&mut path_data, options.finder, 0.0, (size - 7) as f32, pixel_size, quiet_zone);
+    append_finder_path(
+        &mut path_data,
+        options.finder,
+        0.0,
+        (size - 7) as f32,
+        pixel_size,
+        quiet_zone,
+    );
 
     if !path_data.is_empty() {
-        writeln!(&mut svg, r#"<path fill="{}" d="{}" />"#, fill_attr, path_data).unwrap();
+        writeln!(
+            &mut svg,
+            r#"<path fill="{}" d="{}" />"#,
+            fill_attr, path_data
+        )
+        .unwrap();
     }
 
     // Icon
     if let Some(icon_path) = &options.icon {
-        append_icon(&mut svg, icon_path, size, pixel_size, width_px);
+        if let Some(buffer) = utils::read_icon_data(icon_path) {
+            append_icon(&mut svg, &buffer, icon_path, size, pixel_size, width_px);
+        }
     }
 
     writeln!(&mut svg, "</svg>").unwrap();
@@ -111,113 +163,118 @@ pub fn render_svg<G: QrGrid + ?Sized>(
 
 fn append_icon(
     svg: &mut String,
+    buffer: &[u8],
     icon_path: &str,
     size: usize,
     pixel_size: f32,
     width_px: f32,
 ) {
-    use std::io::Read;
+    let mut width: Option<u32> = None;
+    let mut height: Option<u32> = None;
+    let mut mime_type = "application/octet-stream";
 
-    // Read file content
-    let mut file = match std::fs::File::open(icon_path) {
-        Ok(f) => f,
-        Err(_) => return,
-    };
-    let mut buffer = Vec::new();
-    if file.read_to_end(&mut buffer).is_ok() {
-         let mut width: Option<u32> = None;
-         let mut height: Option<u32> = None;
-         let mut mime_type = "application/octet-stream";
+    // Try to detect SVG
+    let is_svg = utils::is_svg_buffer(buffer);
 
-         // Try to detect SVG
-         let is_svg = if let Ok(s) = std::str::from_utf8(&buffer) {
-             s.trim_start().starts_with('<') && s.contains("<svg")
-         } else {
-             false
-         };
+    if is_svg {
+        mime_type = "image/svg+xml";
+        if let Ok(s) = std::str::from_utf8(buffer) {
+            // Simple manual parsing for width/height/viewBox
+            if let Some(start) = s.find("<svg") {
+                let end = s[start..].find('>').unwrap_or(s.len()) + start;
+                let tag = &s[start..end];
 
-         if is_svg {
-             mime_type = "image/svg+xml";
-             if let Ok(s) = std::str::from_utf8(&buffer) {
-                 // Simple manual parsing for width/height/viewBox
-                 if let Some(start) = s.find("<svg") {
-                    let end = s[start..].find('>').unwrap_or(s.len()) + start;
-                    let tag = &s[start..end];
-                    
-                    let parse_attr = |attr: &str| -> Option<u32> {
-                        if let Some(pos) = tag.find(attr) {
-                            let rest = &tag[pos + attr.len()..];
-                            if let Some(quote_start) = rest.find('"') {
-                                let rest = &rest[quote_start + 1..];
-                                if let Some(quote_end) = rest.find('"') {
-                                    let val_str = &rest[..quote_end];
-                                    let num_str: String = val_str.chars()
-                                        .filter(|c| c.is_numeric() || *c == '.')
-                                        .collect();
-                                    return num_str.parse::<f32>().ok().map(|v| v as u32);
+                let parse_attr = |attr: &str| -> Option<u32> {
+                    if let Some(pos) = tag.find(attr) {
+                        let rest = &tag[pos + attr.len()..];
+                        if let Some(quote_start) = rest.find('"') {
+                            let rest = &rest[quote_start + 1..];
+                            if let Some(quote_end) = rest.find('"') {
+                                let val_str = &rest[..quote_end];
+                                let num_str: String = val_str
+                                    .chars()
+                                    .filter(|c| c.is_numeric() || *c == '.')
+                                    .collect();
+                                return num_str.parse::<f32>().ok().map(|v| v as u32);
+                            }
+                        }
+                    }
+                    None
+                };
+
+                width = parse_attr("width=");
+                height = parse_attr("height=");
+
+                if width.is_none() || height.is_none() {
+                    if let Some(pos) = tag.find("viewBox=") {
+                        let rest = &tag[pos + 8..];
+                        if let Some(quote_start) = rest.find('"') {
+                            let rest = &rest[quote_start + 1..];
+                            if let Some(quote_end) = rest.find('"') {
+                                let val_str = &rest[..quote_end];
+                                let parts: Vec<f32> = val_str
+                                    .split_whitespace()
+                                    .filter_map(|s| s.parse().ok())
+                                    .collect();
+                                if parts.len() == 4 {
+                                    if width.is_none() {
+                                        width = Some(parts[2] as u32);
+                                    }
+                                    if height.is_none() {
+                                        height = Some(parts[3] as u32);
+                                    }
                                 }
                             }
                         }
-                        None
-                    };
-
-                    width = parse_attr("width=");
-                    height = parse_attr("height=");
-                    
-                    if width.is_none() || height.is_none() {
-                         if let Some(pos) = tag.find("viewBox=") {
-                             let rest = &tag[pos + 8..];
-                             if let Some(quote_start) = rest.find('"') {
-                                let rest = &rest[quote_start + 1..];
-                                if let Some(quote_end) = rest.find('"') {
-                                    let val_str = &rest[..quote_end];
-                                    let parts: Vec<f32> = val_str.split_whitespace()
-                                         .filter_map(|s| s.parse().ok())
-                                         .collect();
-                                     if parts.len() == 4 {
-                                         if width.is_none() { width = Some(parts[2] as u32); }
-                                         if height.is_none() { height = Some(parts[3] as u32); }
-                                     }
-                                }
-                             }
-                         }
                     }
-                 }
-             }
-         } else {
-             // Try raster
-             if let Ok(reader) = image::ImageReader::new(std::io::Cursor::new(&buffer)).with_guessed_format() {
-                 if let Ok(dims) = reader.into_dimensions() {
-                     width = Some(dims.0);
-                     height = Some(dims.1);
-                     
-                     if let Ok(format) = image::guess_format(&buffer) {
-                        mime_type = match format {
-                            image::ImageFormat::Png => "image/png",
-                            image::ImageFormat::Jpeg => "image/jpeg",
-                            image::ImageFormat::Gif => "image/gif",
-                            image::ImageFormat::WebP => "image/webp",
-                            _ => "application/octet-stream",
-                        };
-                     }
-                 }
-             }
-         }
+                }
+            }
+        }
+    } else {
+        // Try raster
+        if let Ok(reader) =
+            image::ImageReader::new(std::io::Cursor::new(buffer)).with_guessed_format()
+        {
+            if let Ok(dims) = reader.into_dimensions() {
+                width = Some(dims.0);
+                height = Some(dims.1);
 
-         if let (Some(w_px), Some(h_px)) = (width, height) {
-                let icon_size = size as f32 * 0.25 * pixel_size;
-                let scale = icon_size / (w_px.max(h_px) as f32);
-                let w = w_px as f32 * scale;
-                let h = h_px as f32 * scale;
-                let x = (width_px - w) / 2.0;
-                let y = (width_px - h) / 2.0;
+                if let Ok(format) = image::guess_format(buffer) {
+                    mime_type = match format {
+                        image::ImageFormat::Png => "image/png",
+                        image::ImageFormat::Jpeg => "image/jpeg",
+                        image::ImageFormat::Gif => "image/gif",
+                        image::ImageFormat::WebP => "image/webp",
+                        _ => "application/octet-stream",
+                    };
+                }
+            }
+        }
+    }
 
-                // Encode base64
-                let encoded = encode_base64(&buffer);
-                let href = format!("data:{};base64,{}", mime_type, encoded);
+    if let (Some(w_px), Some(h_px)) = (width, height) {
+        let icon_size = size as f32 * 0.25 * pixel_size;
+        let scale = icon_size / (w_px.max(h_px) as f32);
+        let w = w_px as f32 * scale;
+        let h = h_px as f32 * scale;
+        let x = (width_px - w) / 2.0;
+        let y = (width_px - h) / 2.0;
 
-                writeln!(svg, r#"<image x="{}" y="{}" width="{}" height="{}" href="{}" />"#, x, y, w, h, href).unwrap();
-         }
+        // Encode base64
+        let encoded = encode_base64(buffer);
+        let href = format!("data:{};base64,{}", mime_type, encoded);
+
+        writeln!(
+            svg,
+            r#"<image x="{}" y="{}" width="{}" height="{}" href="{}" />"#,
+            x, y, w, h, href
+        )
+        .unwrap();
+    } else {
+        eprintln!(
+            "Warning: Could not detect image format or dimensions for icon '{}'. The icon will be ignored.",
+            icon_path
+        );
     }
 }
 
@@ -264,9 +321,7 @@ pub struct SvgRenderer {
 impl SvgRenderer {
     pub fn new(grid: &dyn QrGrid, config: &QrConfig) -> Result<Self, String> {
         let data = render_svg(grid, config, config.ppm as f32)?;
-        Ok(Self {
-            data,
-        })
+        Ok(Self { data })
     }
 }
 

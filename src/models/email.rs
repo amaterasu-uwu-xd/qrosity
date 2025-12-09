@@ -1,5 +1,5 @@
-use std::fmt;
 use super::{QrConfig, QrItem};
+use std::fmt;
 
 #[cfg(feature = "cli")]
 use clap::Args;
@@ -31,8 +31,8 @@ pub struct EmailQr {
         arg(
             long,
             short,
-            help = "Output file path", 
-            default_value_t = chrono::Local::now().format("qr_%Y-%m-%d_%H:%M:%S.png").to_string()
+            help = "Output file path",
+            default_value_t = chrono::Local::now().format("qr_%Y-%m-%d_%H:%M:%S").to_string()
         )
     )]
     pub output: String,
@@ -60,7 +60,7 @@ impl fmt::Display for EmailQr {
         }
 
         write!(f, "mailto:{}", self.to)?;
-        
+
         if !parts.is_empty() {
             write!(f, "?{}", parts.join("&"))?;
         }

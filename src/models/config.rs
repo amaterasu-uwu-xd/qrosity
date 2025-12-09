@@ -66,6 +66,8 @@ pub enum OutputFormat {
     Svg,
     /// Output as EPS vector graphic.
     Eps,
+    /// Output as PDF document.
+    Pdf,
 }
 
 /// Configuration options for generating and rendering a QR code.

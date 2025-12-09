@@ -1,12 +1,12 @@
-use crate::models::{QrConfig, GradientDirection};
-use crate::core::renderer::{QrGrid, QrRenderer};
+use crate::core::renderer::{QrGrid, QrRenderer, utils};
+use crate::models::{GradientDirection, QrConfig};
 use std::fmt::Write;
 
-mod module;
 mod finder;
+mod module;
 
-use module::append_module_path;
 use finder::append_finder_path;
+use module::append_module_path;
 
 /// Renders the QR code grid into an EPS string based on the provided configuration.
 pub fn render_eps<G: QrGrid + ?Sized>(
@@ -32,12 +32,22 @@ pub fn render_eps<G: QrGrid + ?Sized>(
     writeln!(&mut eps, "1 -1 scale").unwrap();
 
     if let Some(bg_color) = parse_color(&options.background) {
-        writeln!(&mut eps, "newpath 0 0 moveto {} 0 lineto {} {} lineto 0 {} lineto closepath", width_px, width_px, height_px, height_px).unwrap();
-        writeln!(&mut eps, "{} {} {} setrgbcolor fill", bg_color.0, bg_color.1, bg_color.2).unwrap();
+        writeln!(
+            &mut eps,
+            "newpath 0 0 moveto {} 0 lineto {} {} lineto 0 {} lineto closepath",
+            width_px, width_px, height_px, height_px
+        )
+        .unwrap();
+        writeln!(
+            &mut eps,
+            "{} {} {} setrgbcolor fill",
+            bg_color.0, bg_color.1, bg_color.2
+        )
+        .unwrap();
     }
 
     let mut path_data = String::new();
-    
+
     for y in 0..size {
         for x in 0..size {
             if grid.is_dark(x, y) {
@@ -48,7 +58,7 @@ pub fn render_eps<G: QrGrid + ?Sized>(
                 let px = (x as f32 + quiet_zone) * pixel_size;
                 let py = (y as f32 + quiet_zone) * pixel_size;
                 let ctx = grid.module_context(x, y);
-                
+
                 append_module_path(&mut path_data, options.shape, px, py, pixel_size, &ctx);
             }
         }
@@ -56,46 +66,90 @@ pub fn render_eps<G: QrGrid + ?Sized>(
 
     // Finders
     // Top-Left
-    append_finder_path(&mut path_data, options.finder, quiet_zone * pixel_size, quiet_zone * pixel_size, pixel_size);
+    append_finder_path(
+        &mut path_data,
+        options.finder,
+        quiet_zone * pixel_size,
+        quiet_zone * pixel_size,
+        pixel_size,
+    );
     // Top-Right
-    append_finder_path(&mut path_data, options.finder, (size as f32 - 7.0 + quiet_zone) * pixel_size, quiet_zone * pixel_size, pixel_size);
+    append_finder_path(
+        &mut path_data,
+        options.finder,
+        (size as f32 - 7.0 + quiet_zone) * pixel_size,
+        quiet_zone * pixel_size,
+        pixel_size,
+    );
     // Bottom-Left
-    append_finder_path(&mut path_data, options.finder, quiet_zone * pixel_size, (size as f32 - 7.0 + quiet_zone) * pixel_size, pixel_size);
+    append_finder_path(
+        &mut path_data,
+        options.finder,
+        quiet_zone * pixel_size,
+        (size as f32 - 7.0 + quiet_zone) * pixel_size,
+        pixel_size,
+    );
 
     // Fill Foreground
     if !path_data.is_empty() {
         writeln!(&mut eps, "gsave").unwrap();
         writeln!(&mut eps, "newpath").unwrap();
         eps.push_str(&path_data);
-        
+
         // Color handling
         if options.foreground.len() > 1 {
             // Gradient
             // We need to define a clipping path from the QR shape and then draw the gradient
             writeln!(&mut eps, "clip").unwrap();
-            
-            let colors: Vec<(f32, f32, f32)> = options.foreground.iter()
+
+            let colors: Vec<(f32, f32, f32)> = options
+                .foreground
+                .iter()
                 .filter_map(|c| parse_color(c))
                 .collect();
-                
+
             if !colors.is_empty() {
-                let (x0, y0, r0, x1, y1, r1) = get_gradient_coords(options.gradient_direction, width_px, height_px);
-                let shading_type = if options.gradient_direction == GradientDirection::Radial { 3 } else { 2 };
-                
+                let (x0, y0, r0, x1, y1, r1) =
+                    utils::get_gradient_coords(options.gradient_direction, width_px, height_px);
+                let shading_type = if options.gradient_direction == GradientDirection::Radial {
+                    3
+                } else {
+                    2
+                };
+
                 writeln!(&mut eps, "<< /ShadingType {}", shading_type).unwrap();
                 writeln!(&mut eps, "   /ColorSpace /DeviceRGB").unwrap();
                 if shading_type == 2 {
-                    writeln!(&mut eps, "   /Coords [ {:.3} {:.3} {:.3} {:.3} ]", x0, y0, x1, y1).unwrap();
+                    writeln!(
+                        &mut eps,
+                        "   /Coords [ {:.3} {:.3} {:.3} {:.3} ]",
+                        x0, y0, x1, y1
+                    )
+                    .unwrap();
                 } else {
-                    writeln!(&mut eps, "   /Coords [ {:.3} {:.3} {:.3} {:.3} {:.3} {:.3} ]", x0, y0, r0, x1, y1, r1).unwrap();
+                    writeln!(
+                        &mut eps,
+                        "   /Coords [ {:.3} {:.3} {:.3} {:.3} {:.3} {:.3} ]",
+                        x0, y0, r0, x1, y1, r1
+                    )
+                    .unwrap();
                 }
-                writeln!(&mut eps, "   /Function {}", ps_function(&colors)).unwrap();
+                writeln!(
+                    &mut eps,
+                    "   /Function {}",
+                    utils::generate_pdf_ps_gradient_function(&colors)
+                )
+                .unwrap();
                 writeln!(&mut eps, "   /Extend [ true true ]").unwrap();
                 writeln!(&mut eps, ">> shfill").unwrap();
             }
-            
         } else if let Some(fg_color) = options.foreground.first().and_then(|c| parse_color(c)) {
-            writeln!(&mut eps, "{} {} {} setrgbcolor fill", fg_color.0, fg_color.1, fg_color.2).unwrap();
+            writeln!(
+                &mut eps,
+                "{} {} {} setrgbcolor fill",
+                fg_color.0, fg_color.1, fg_color.2
+            )
+            .unwrap();
         } else {
             // Default black
             writeln!(&mut eps, "0 0 0 setrgbcolor fill").unwrap();
@@ -105,7 +159,9 @@ pub fn render_eps<G: QrGrid + ?Sized>(
 
     // Icon
     if let Some(icon_path) = &options.icon {
-        append_icon(&mut eps, icon_path, size, pixel_size, width_px, height_px);
+        if let Some(img) = utils::load_raster_icon(icon_path, "EPS") {
+            append_icon(&mut eps, &img, size, pixel_size, width_px, height_px);
+        }
     }
 
     writeln!(&mut eps, "%%EOF").unwrap();
@@ -113,95 +169,44 @@ pub fn render_eps<G: QrGrid + ?Sized>(
     Ok(eps)
 }
 
-fn append_icon(eps: &mut String, icon_path: &str, size: usize, pixel_size: f32, width_px: f32, height_px: f32) {
-    if let Ok(img) = image::open(icon_path) {
-        let img = img.to_rgba8();
-        let (w, h) = img.dimensions();
-        let icon_size = (size as f32 * pixel_size) * 0.25;
-        let x = (width_px - icon_size) / 2.0;
-        let y = (height_px - icon_size) / 2.0;
-        
-        writeln!(eps, "gsave").unwrap();
-        writeln!(eps, "{} {} translate", x, y).unwrap();
-        writeln!(eps, "{} {} scale", icon_size, icon_size).unwrap();
-        
-        writeln!(eps, "/picstr {} string def", w * 3).unwrap(); // RGB
-        writeln!(eps, "{} {} 8", w, h).unwrap();
-        writeln!(eps, "[{} 0 0 {} 0 0]", w, h).unwrap(); // Matrix
-        writeln!(eps, "{{ currentfile picstr readhexstring pop }}").unwrap();
-        writeln!(eps, "false 3").unwrap(); // false = single source, 3 = RGB
-        writeln!(eps, "colorimage").unwrap();
-        
-        // Write hex data
-        for pixel in img.pixels() {
-            // RGB only, ignore alpha for EPS simple implementation
-            write!(eps, "{:02x}{:02x}{:02x}", pixel[0], pixel[1], pixel[2]).unwrap();
-        }
-        writeln!(eps, "").unwrap();
-        
-        writeln!(eps, "grestore").unwrap();
+fn append_icon(
+    eps: &mut String,
+    img: &image::DynamicImage,
+    size: usize,
+    pixel_size: f32,
+    width_px: f32,
+    height_px: f32,
+) {
+    let img = img.to_rgba8();
+    let (w, h) = img.dimensions();
+    let icon_size = (size as f32 * pixel_size) * 0.25;
+    let x = (width_px - icon_size) / 2.0;
+    let y = (height_px - icon_size) / 2.0;
+
+    writeln!(eps, "gsave").unwrap();
+    writeln!(eps, "{} {} translate", x, y).unwrap();
+    writeln!(eps, "{} {} scale", icon_size, icon_size).unwrap();
+
+    writeln!(eps, "/picstr {} string def", w * 3).unwrap(); // RGB
+    writeln!(eps, "{} {} 8", w, h).unwrap();
+    writeln!(eps, "[{} 0 0 {} 0 0]", w, h).unwrap(); // Matrix
+    writeln!(eps, "{{ currentfile picstr readhexstring pop }}").unwrap();
+    writeln!(eps, "false 3").unwrap(); // false = single source, 3 = RGB
+    writeln!(eps, "colorimage").unwrap();
+
+    // Write hex data
+    for pixel in img.pixels() {
+        // RGB only, ignore alpha for EPS simple implementation
+        write!(eps, "{:02x}{:02x}{:02x}", pixel[0], pixel[1], pixel[2]).unwrap();
     }
+    writeln!(eps, "").unwrap();
+
+    writeln!(eps, "grestore").unwrap();
 }
 
 fn parse_color(hex: &str) -> Option<(f32, f32, f32)> {
-    let hex = hex.trim_start_matches('#');
-    if hex.len() == 6 {
-        let r = u8::from_str_radix(&hex[0..2], 16).ok()? as f32 / 255.0;
-        let g = u8::from_str_radix(&hex[2..4], 16).ok()? as f32 / 255.0;
-        let b = u8::from_str_radix(&hex[4..6], 16).ok()? as f32 / 255.0;
-        Some((r, g, b))
-    } else {
-        None
-    }
-}
-
-fn get_gradient_coords(direction: GradientDirection, width: f32, height: f32) -> (f32, f32, f32, f32, f32, f32) {
-    // Returns (x0, y0, r0, x1, y1, r1)
-    // For Axial, r0 and r1 are ignored (or used as dummy)
-    match direction {
-        GradientDirection::TopToBottom => (0.0, 0.0, 0.0, 0.0, height, 0.0),
-        GradientDirection::LeftToRight => (0.0, 0.0, 0.0, width, 0.0, 0.0),
-        GradientDirection::TopLeftToBottomRight => (0.0, 0.0, 0.0, width, height, 0.0),
-        GradientDirection::BottomLeftToTopRight => (0.0, height, 0.0, width, 0.0, 0.0),
-        GradientDirection::Radial => (width / 2.0, height / 2.0, 0.0, width / 2.0, height / 2.0, width / 2.0 * 1.414),
-    }
-}
-
-fn ps_function(colors: &[(f32, f32, f32)]) -> String {
-    let n = colors.len();
-    if n < 2 { return String::new(); }
-
-    let mut s = String::new();
-    
-    // Stitching Function (Type 3)
-    s.push_str("<< /FunctionType 3 /Domain [0 1] ");
-    
-    // Functions array
-    s.push_str("/Functions [");
-    for i in 0..n-1 {
-        let c0 = colors[i];
-        let c1 = colors[i+1];
-        s.push_str(&format!(" << /FunctionType 2 /Domain [0 1] /C0 [{:.3} {:.3} {:.3}] /C1 [{:.3} {:.3} {:.3}] /N 1 >>", 
-            c0.0, c0.1, c0.2, c1.0, c1.1, c1.2));
-    }
-    s.push_str(" ] ");
-    
-    // Bounds array
-    s.push_str("/Bounds [");
-    for i in 1..n-1 {
-        let val = i as f32 / (n - 1) as f32;
-        s.push_str(&format!(" {:.3}", val));
-    }
-    s.push_str(" ] ");
-    
-    // Encode array
-    s.push_str("/Encode [");
-    for _ in 0..n-1 {
-        s.push_str(" 0 1");
-    }
-    s.push_str(" ] >>");
-    
-    s
+    utils::parse_hex_color(hex)
+        .map(|(r, g, b)| (r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0))
 }
 
 pub struct EpsRenderer {
@@ -211,9 +216,7 @@ pub struct EpsRenderer {
 impl EpsRenderer {
     pub fn new(grid: &dyn QrGrid, config: &QrConfig) -> Result<Self, String> {
         let data = render_eps(grid, config, config.ppm as f32)?;
-        Ok(Self {
-            data,
-        })
+        Ok(Self { data })
     }
 }
 
@@ -228,4 +231,3 @@ impl QrRenderer for EpsRenderer {
         Ok(final_path)
     }
 }
-

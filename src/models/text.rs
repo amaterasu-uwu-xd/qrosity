@@ -17,8 +17,8 @@ pub struct TextQr {
         arg(
             long,
             short,
-            help = "Output file path", 
-            default_value_t = chrono::Local::now().format("qr_%Y-%m-%d_%H:%M:%S.png").to_string()
+            help = "Output file path",
+            default_value_t = chrono::Local::now().format("qr_%Y-%m-%d_%H:%M:%S").to_string()
         )
     )]
     pub output: String,

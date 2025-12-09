@@ -3,6 +3,8 @@ use crate::core::qrgen::QrCode;
 pub mod png;
 pub mod svg;
 pub mod eps;
+pub mod pdf;
+pub mod utils;
 
 /// Trait for QR code renderers.
 /// Allows rendering to an in-memory format and saving to a file.

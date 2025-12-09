@@ -1,5 +1,5 @@
 use crate::{core::qrgen::{Mask, QrCode, QrSegment, Version}, models::{QrItem, OutputFormat}};
-use crate::core::renderer::{QrRenderer, svg::SvgRenderer, eps::EpsRenderer, png::PngRenderer};
+use crate::core::renderer::{QrRenderer, svg::SvgRenderer, eps::EpsRenderer, png::PngRenderer, pdf::PdfRenderer};
 
 pub mod qrgen;
 mod renderer;
@@ -33,6 +33,7 @@ pub fn generate_qr<T: QrItem>(item: &T) -> Result<Box<dyn QrRenderer>, String> {
     let renderer: Box<dyn QrRenderer> = match config.format {
         OutputFormat::Svg => Box::new(SvgRenderer::new(&qr, config)?),
         OutputFormat::Eps => Box::new(EpsRenderer::new(&qr, config)?),
+        OutputFormat::Pdf => Box::new(PdfRenderer::new(&qr, config)?),
         _ => Box::new(PngRenderer::new(&qr, config)?),
     };
 
