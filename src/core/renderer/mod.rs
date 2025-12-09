@@ -1,9 +1,8 @@
 use crate::core::qrgen::QrCode;
 
 pub mod png;
-
-#[cfg(feature = "svg")]
 pub mod svg;
+pub mod eps;
 
 /// Provides context about the position of a module in the QR code.
 /// This is useful for rendering purposes, such as determining
@@ -19,6 +18,23 @@ pub struct ModuleContext {
 pub trait QrGrid {
     fn size(&self) -> usize;
     fn get_module(&self, x: usize, y: usize) -> bool;
+    fn is_dark(&self, x: usize, y: usize) -> bool {
+        self.get_module(x, y)
+    }
+    fn is_finder(&self, x: usize, y: usize) -> bool {
+        if x < 7 && y < 7 { return true; }
+        if x >= self.size() - 7 && y < 7 { return true; }
+        if x < 7 && y >= self.size() - 7 { return true; }
+        false
+    }
+    fn module_context(&self, x: usize, y: usize) -> ModuleContext {
+        ModuleContext {
+            top: y > 0 && self.get_module(x, y - 1),
+            bottom: y < self.size() - 1 && self.get_module(x, y + 1),
+            left: x > 0 && self.get_module(x - 1, y),
+            right: x < self.size() - 1 && self.get_module(x + 1, y),
+        }
+    }
 }
 
 impl QrGrid for QrCode {

@@ -34,12 +34,16 @@ pub fn to_qr<T: QrItem>(item: T) {
     let qr = qr.unwrap();
 
     // Check output format
-    if config.output.to_lowercase().ends_with(".svg") {
-        #[cfg(feature = "svg")]
-        {
+    let extension = std::path::Path::new(&config.output)
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .map(|s| s.to_lowercase());
+
+    match extension.as_deref() {
+        Some("svg") => {
             match renderer::svg::render_svg(&qr, &config, config.ppm as f32) {
-                Ok(document) => {
-                    if let Err(e) = svg::save(&config.output, &document) {
+                Ok(svg_content) => {
+                    if let Err(e) = std::fs::write(&config.output, svg_content) {
                         eprintln!("Error saving SVG: {}", e);
                     } else {
                         println!("QR code saved to {}", &config.output);
@@ -47,22 +51,31 @@ pub fn to_qr<T: QrItem>(item: T) {
                 },
                 Err(e) => eprintln!("Error rendering SVG: {}", e),
             }
-        }
-        #[cfg(not(feature = "svg"))]
-        {
-            eprintln!("Error: SVG support is not enabled. Compile with --features svg");
-        }
-    } else {
-        // Call the raster renderer
-        match renderer::png::render_qr(&qr, &config, config.ppm as f32) {
-            Ok(pixmap) => {
-                if let Err(e) = pixmap.save_png(&config.output) {
-                    eprintln!("Error saving QR code: {}", e);
-                } else {
-                    println!("QR code saved to {}", &config.output);
-                }
-            },
-            Err(e) => eprintln!("Error rendering QR: {}", e),
+        },
+        Some("eps") => {
+            match renderer::eps::render_eps(&qr, config, config.ppm as f32) {
+                Ok(eps_content) => {
+                    if let Err(e) = std::fs::write(&config.output, eps_content) {
+                        eprintln!("Error saving EPS: {}", e);
+                    } else {
+                        println!("QR code saved to {}", &config.output);
+                    }
+                },
+                Err(e) => eprintln!("Error rendering EPS: {}", e),
+            }
+        },
+        _ => {
+            // Call the raster renderer
+            match renderer::png::render_qr(&qr, &config, config.ppm as f32) {
+                Ok(pixmap) => {
+                    if let Err(e) = renderer::png::save_image(&pixmap, &config.output) {
+                        eprintln!("{}", e);
+                    } else {
+                        println!("QR code saved to {}", &config.output);
+                    }
+                },
+                Err(e) => eprintln!("Error rendering QR: {}", e),
+            }
         }
     }
 }

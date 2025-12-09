@@ -1,6 +1,6 @@
 use crate::models::{QrConfig, GradientDirection};
 use tiny_skia::*;
-use crate::core::renderer::{QrGrid, ModuleContext};
+use crate::core::renderer::QrGrid;
 
 pub mod module;
 pub mod finder;
@@ -96,23 +96,15 @@ pub fn render_qr<G: QrGrid>(
 
     for y in 0..size {
         for x in 0..size {
-            let is_finder =
-                (x < 7 && y < 7) || (x >= size - 7 && y < 7) || (x < 7 && y >= size - 7);
-
-            if is_finder {
+            if grid.is_finder(x, y) {
                 continue;
             }
 
-            if grid.get_module(x, y) {
+            if grid.is_dark(x, y) {
                 let px = (x as f32 + quiet_zone) * pixel_size;
                 let py = (y as f32 + quiet_zone) * pixel_size;
 
-                let ctx = ModuleContext {
-                    top: y > 0 && grid.get_module(x, y - 1),
-                    bottom: y < size - 1 && grid.get_module(x, y + 1),
-                    left: x > 0 && grid.get_module(x - 1, y),
-                    right: x < size - 1 && grid.get_module(x + 1, y),
-                };
+                let ctx = grid.module_context(x, y);
 
                 let path = draw_module(options.shape, px, py, pixel_size, &ctx);
                 pixmap.fill_path(
@@ -197,4 +189,34 @@ fn draw_icon(pixmap: &mut Pixmap, ppm: u32, path: &str, size: f32, canvas_size: 
     pixmap.draw_pixmap(0, 0, icon_pixmap.as_ref(), &paint, transform, None);
 
     Ok(())
+}
+
+/// Saves the rendered Pixmap to a file.
+/// Supports PNG natively via tiny-skia, and other formats (JPG, BMP, etc.) via the image crate.
+pub fn save_image(pixmap: &Pixmap, path: &str) -> Result<(), String> {
+    let path_obj = std::path::Path::new(path);
+    let extension = path_obj.extension()
+        .and_then(|ext| ext.to_str())
+        .map(|s| s.to_lowercase());
+
+    if extension.as_deref() == Some("png") {
+        pixmap.save_png(path).map_err(|e| format!("Error saving PNG: {}", e))
+    } else {
+        let width = pixmap.width();
+        let height = pixmap.height();
+        let data = pixmap.data().to_vec();
+
+        let img = image::RgbaImage::from_raw(width, height, data)
+            .ok_or("Error creating image buffer from pixmap")?;
+        
+        let dynamic_image = image::DynamicImage::ImageRgba8(img);
+
+        // Handle formats that don't support alpha
+        let output_image = match extension.as_deref() {
+            Some("jpg") | Some("jpeg") => image::DynamicImage::ImageRgb8(dynamic_image.into_rgb8()),
+            _ => dynamic_image,
+        };
+
+        output_image.save(path).map_err(|e| format!("Error saving image: {}", e))
+    }
 }

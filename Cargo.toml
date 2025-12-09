@@ -22,18 +22,15 @@ cxx-qt-lib-extras = { version = "0.7.3", optional = true }
 rayon = { version = "1.11.0", optional = true }
 serde = { version = "1.0.228", features = ["derive"], optional = true }
 serde_json = { version = "1.0.138", optional = true }
-svg = { version = "0.18.0", optional = true }
-base64 = {version = "0.22.1", optional = true }
 
 [build-dependencies]
 cxx-qt-build = { version = "0.7.3", features = ["link_qt_object_files"], optional = true }
 
 [features]
-default = [ "cli", "svg" ]
+default = [ "cli" ]
 cli = []
 gui = ["dep:cxx", "dep:cxx-qt", "dep:cxx-qt-lib", "dep:cxx-qt-lib-extras", "dep:cxx-qt-build"]
 batch = ["dep:serde", "dep:serde_json", "dep:rayon"]
-svg = ["dep:svg", "dep:base64"]
 
 [profile.release]
 strip = true  # Automatically strip symbols from the binary.

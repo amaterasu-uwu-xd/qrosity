@@ -1,7 +1,6 @@
 use crate::models::{QrConfig, GradientDirection};
-use crate::core::renderer::{QrGrid, ModuleContext};
-use svg::Document;
-use svg::node::element::{Path, Rectangle, Definitions, LinearGradient, RadialGradient, Stop, Image};
+use crate::core::renderer::QrGrid;
+use std::fmt::Write;
 
 pub mod module;
 pub mod finder;
@@ -9,13 +8,12 @@ pub mod finder;
 use module::append_module_path;
 use finder::append_finder_path;
 
-/// Renders a QR code grid into an SVG Document.
-/// If failed, returns an error message as a String.
+/// Renders a QR code grid into an SVG String.
 pub fn render_svg<G: QrGrid>(
     grid: &G,
     options: &QrConfig,
     pixel_size: f32,
-) -> Result<Document, String> {
+) -> Result<String, String> {
     let size = grid.size();
     let quiet_zone = options.quiet_zone as f32;
     let width_px = (size as f32 + quiet_zone * 2.0) * pixel_size;
@@ -28,45 +26,25 @@ pub fn render_svg<G: QrGrid>(
         }
     };
 
-    let mut document = Document::new()
-        .set("viewBox", (0, 0, width_px, width_px))
-        .set("width", width_px)
-        .set("height", width_px);
+    let mut svg = String::new();
+    
+    // SVG Header
+    writeln!(&mut svg, r#"<svg viewBox="0 0 {w} {h}" width="{w}" height="{h}" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">"#, w=width_px, h=width_px).unwrap();
 
     // Background
-    let bg_rect = Rectangle::new()
-        .set("width", "100%")
-        .set("height", "100%")
-        .set("fill", sanitize_color(&options.background));
-    document = document.add(bg_rect);
+    writeln!(&mut svg, r#"<rect width="100%" height="100%" fill="{}" />"#, sanitize_color(&options.background)).unwrap();
 
     // Definitions for Gradients
-    let mut defs = Definitions::new();
     let fill_id = "qr-fill";
-    let mut use_gradient = false;
+    let mut fill_attr = sanitize_color(options.foreground.first().unwrap_or(&"#000000".to_string()));
 
     if options.foreground.len() > 1 {
-        use_gradient = true;
-        let stops: Vec<Stop> = options.foreground.iter().enumerate().map(|(i, color)| {
-            let offset = (i as f32 / (options.foreground.len() - 1) as f32) * 100.0;
-            Stop::new()
-                .set("offset", format!("{}%", offset))
-                .set("stop-color", sanitize_color(color))
-        }).collect();
-
+        fill_attr = format!("url(#{})", fill_id);
+        
+        writeln!(&mut svg, "<defs>").unwrap();
+        
         if options.gradient_direction == GradientDirection::Radial {
-             let mut gradient = RadialGradient::new()
-                .set("id", fill_id)
-                .set("cx", "50%")
-                .set("cy", "50%")
-                .set("r", "70.7%") // approx 1.414 / 2 * 100
-                .set("fx", "50%")
-                .set("fy", "50%");
-            
-            for stop in stops {
-                gradient = gradient.add(stop);
-            }
-            defs = defs.add(gradient);
+            writeln!(&mut svg, r#"<radialGradient id="{}" cx="50%" cy="50%" r="70.7%" fx="50%" fy="50%">"#, fill_id).unwrap();
         } else {
             let (x1, y1, x2, y2) = match options.gradient_direction {
                 GradientDirection::TopToBottom => ("50%", "0%", "50%", "100%"),
@@ -75,46 +53,34 @@ pub fn render_svg<G: QrGrid>(
                 GradientDirection::BottomLeftToTopRight => ("0%", "100%", "100%", "0%"),
                 _ => ("0%", "0%", "100%", "100%"),
             };
-
-            let mut gradient = LinearGradient::new()
-                .set("id", fill_id)
-                .set("x1", x1)
-                .set("y1", y1)
-                .set("x2", x2)
-                .set("y2", y2);
-
-            for stop in stops {
-                gradient = gradient.add(stop);
-            }
-            defs = defs.add(gradient);
+            writeln!(&mut svg, r#"<linearGradient id="{}" x1="{}" y1="{}" x2="{}" y2="{}">"#, fill_id, x1, y1, x2, y2).unwrap();
         }
-        document = document.add(defs);
-    }
 
-    let fill_attr = if use_gradient {
-        format!("url(#{})", fill_id)
-    } else {
-        sanitize_color(options.foreground.first().unwrap())
-    };
+        for (i, color) in options.foreground.iter().enumerate() {
+            let offset = (i as f32 / (options.foreground.len() - 1) as f32) * 100.0;
+            writeln!(&mut svg, r#"<stop offset="{}%" stop-color="{}" />"#, offset, sanitize_color(color)).unwrap();
+        }
+
+        if options.gradient_direction == GradientDirection::Radial {
+            writeln!(&mut svg, "</radialGradient>").unwrap();
+        } else {
+            writeln!(&mut svg, "</linearGradient>").unwrap();
+        }
+        writeln!(&mut svg, "</defs>").unwrap();
+    }
 
     // Draw Modules
     let mut path_data = String::new();
 
     for y in 0..size {
         for x in 0..size {
-            let is_finder = (x < 7 && y < 7) || (x >= size - 7 && y < 7) || (x < 7 && y >= size - 7);
-            if is_finder { continue; }
+            if grid.is_finder(x, y) { continue; }
 
-            if grid.get_module(x, y) {
+            if grid.is_dark(x, y) {
                 let px = (x as f32 + quiet_zone) * pixel_size;
                 let py = (y as f32 + quiet_zone) * pixel_size;
 
-                let ctx = ModuleContext {
-                    top: y > 0 && grid.get_module(x, y - 1),
-                    bottom: y < size - 1 && grid.get_module(x, y + 1),
-                    left: x > 0 && grid.get_module(x - 1, y),
-                    right: x < size - 1 && grid.get_module(x + 1, y),
-                };
+                let ctx = grid.module_context(x, y);
 
                 append_module_path(&mut path_data, options.shape, px, py, pixel_size, &ctx);
             }
@@ -129,34 +95,33 @@ pub fn render_svg<G: QrGrid>(
     // Bottom Left
     append_finder_path(&mut path_data, options.finder, 0.0, (size - 7) as f32, pixel_size, quiet_zone);
 
-    let path = Path::new()
-        .set("fill", fill_attr)
-        .set("d", path_data);
-    
-    document = document.add(path);
+    if !path_data.is_empty() {
+        writeln!(&mut svg, r#"<path fill="{}" d="{}" />"#, fill_attr, path_data).unwrap();
+    }
 
     // Icon
     if let Some(icon_path) = &options.icon {
-        document = draw_icon(document, icon_path, size, pixel_size, width_px);
+        append_icon(&mut svg, icon_path, size, pixel_size, width_px);
     }
 
-    Ok(document)
+    writeln!(&mut svg, "</svg>").unwrap();
+
+    Ok(svg)
 }
 
-fn draw_icon(
-    mut document: Document,
+fn append_icon(
+    svg: &mut String,
     icon_path: &str,
     size: usize,
     pixel_size: f32,
     width_px: f32,
-) -> Document {
+) {
     use std::io::Read;
-    use base64::prelude::*;
 
     // Read file content
     let mut file = match std::fs::File::open(icon_path) {
         Ok(f) => f,
-        Err(_) => return document,
+        Err(_) => return,
     };
     let mut buffer = Vec::new();
     if file.read_to_end(&mut buffer).is_ok() {
@@ -174,31 +139,49 @@ fn draw_icon(
          if is_svg {
              mime_type = "image/svg+xml";
              if let Ok(s) = std::str::from_utf8(&buffer) {
-                 for event in svg::Parser::new(s) {
-                     if let svg::parser::Event::Tag("svg", _, attributes) = event {
-                         if let Some(w) = attributes.get("width") {
-                             if let Ok(val) = w.trim_matches(|c: char| !c.is_numeric() && c != '.').parse::<f32>() {
-                                 width = Some(val as u32);
+                 // Simple manual parsing for width/height/viewBox
+                 if let Some(start) = s.find("<svg") {
+                    let end = s[start..].find('>').unwrap_or(s.len()) + start;
+                    let tag = &s[start..end];
+                    
+                    let parse_attr = |attr: &str| -> Option<u32> {
+                        if let Some(pos) = tag.find(attr) {
+                            let rest = &tag[pos + attr.len()..];
+                            if let Some(quote_start) = rest.find('"') {
+                                let rest = &rest[quote_start + 1..];
+                                if let Some(quote_end) = rest.find('"') {
+                                    let val_str = &rest[..quote_end];
+                                    let num_str: String = val_str.chars()
+                                        .filter(|c| c.is_numeric() || *c == '.')
+                                        .collect();
+                                    return num_str.parse::<f32>().ok().map(|v| v as u32);
+                                }
+                            }
+                        }
+                        None
+                    };
+
+                    width = parse_attr("width=");
+                    height = parse_attr("height=");
+                    
+                    if width.is_none() || height.is_none() {
+                         if let Some(pos) = tag.find("viewBox=") {
+                             let rest = &tag[pos + 8..];
+                             if let Some(quote_start) = rest.find('"') {
+                                let rest = &rest[quote_start + 1..];
+                                if let Some(quote_end) = rest.find('"') {
+                                    let val_str = &rest[..quote_end];
+                                    let parts: Vec<f32> = val_str.split_whitespace()
+                                         .filter_map(|s| s.parse().ok())
+                                         .collect();
+                                     if parts.len() == 4 {
+                                         if width.is_none() { width = Some(parts[2] as u32); }
+                                         if height.is_none() { height = Some(parts[3] as u32); }
+                                     }
+                                }
                              }
                          }
-                         if let Some(h) = attributes.get("height") {
-                             if let Ok(val) = h.trim_matches(|c: char| !c.is_numeric() && c != '.').parse::<f32>() {
-                                 height = Some(val as u32);
-                             }
-                         }
-                         if width.is_none() || height.is_none() {
-                             if let Some(vb) = attributes.get("viewBox") {
-                                 let parts: Vec<f32> = vb.split_whitespace()
-                                     .filter_map(|s| s.parse().ok())
-                                     .collect();
-                                 if parts.len() == 4 {
-                                     if width.is_none() { width = Some(parts[2] as u32); }
-                                     if height.is_none() { height = Some(parts[3] as u32); }
-                                 }
-                             }
-                         }
-                         break;
-                     }
+                    }
                  }
              }
          } else {
@@ -230,18 +213,46 @@ fn draw_icon(
                 let y = (width_px - h) / 2.0;
 
                 // Encode base64
-                let encoded = BASE64_STANDARD.encode(&buffer);
+                let encoded = encode_base64(&buffer);
                 let href = format!("data:{};base64,{}", mime_type, encoded);
 
-                let image_node = Image::new()
-                    .set("x", x)
-                    .set("y", y)
-                    .set("width", w)
-                    .set("height", h)
-                    .set("href", href); 
-                
-                document = document.add(image_node);
+                writeln!(svg, r#"<image x="{}" y="{}" width="{}" height="{}" href="{}" />"#, x, y, w, h, href).unwrap();
          }
     }
-    document
+}
+
+fn encode_base64(input: &[u8]) -> String {
+    const ALPHABET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut output = String::with_capacity((input.len() * 4 / 3) + 4);
+    let mut i = 0;
+    let len = input.len();
+
+    while i < len {
+        let b0 = input[i];
+        let b1 = if i + 1 < len { input[i + 1] } else { 0 };
+        let b2 = if i + 2 < len { input[i + 2] } else { 0 };
+
+        let idx0 = (b0 >> 2) as usize;
+        let idx1 = (((b0 & 0x03) << 4) | (b1 >> 4)) as usize;
+        let idx2 = (((b1 & 0x0F) << 2) | (b2 >> 6)) as usize;
+        let idx3 = (b2 & 0x3F) as usize;
+
+        output.push(ALPHABET[idx0] as char);
+        output.push(ALPHABET[idx1] as char);
+
+        if i + 1 < len {
+            output.push(ALPHABET[idx2] as char);
+        } else {
+            output.push('=');
+        }
+
+        if i + 2 < len {
+            output.push(ALPHABET[idx3] as char);
+        } else {
+            output.push('=');
+        }
+
+        i += 3;
+    }
+    output
 }
