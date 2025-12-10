@@ -6,12 +6,12 @@ A terminal and desktop application for generating QR codes with advanced customi
 - Generate QR codes from text, URLs, and other data.
 - Customize colors, sizes, and error correction levels.
 - Optional GUI, CLI and batch processing support.
-- Output formats: PNG, SVG (with svg feature enabled).
+- Output formats: SVG, EPS, PDF and some raster formats (PNG, JPEG, BMP, etc).
 
 ## Installation
 Using `cargo`:
 ```bash
-cargo install --git https://github.com/amaterasu-uwu-xd/qrosity
+cargo install qrosity
 ```
 
 From source:
@@ -22,7 +22,7 @@ cargo build --release
 ```
 
 > [!NOTE]
-> By default, only the CLI feature is enabled, with SVG support, and without GUI or batch processing.
+> By default, only the CLI feature is enabled, without GUI or batch processing.
 > To enable additional features, use the `--features` flag
 
 ## Usage
@@ -42,29 +42,37 @@ You can generate multiple QR codes in a batch by providing a JSON file with the 
 ```json
 [
   {
-    "Text": {
+    "text": {
       "text": "Hello, World!",
-      "ppm": 20,
-      "foreground": "#000000",
-      "output": "hello_world_qr.svg"
-    }
+      "foreground": ["#FF00FF", "#00FFFF"],
+      "background": "#000000",
+      "gradient-direction": "top-to-bottom"
+      "shape": "horizontal-bars",
+      "format": "svg"
+    },
+    "output": "greeting"
   },
   {
-    "Wifi": {
+    "wifi": {
       "ssid": "MyNetwork",
-      "password": "SecurePass1234",
-      "security": "WPA",
-      "hidden": false,
-      "ppm": 25,
-      "foreground": [
-        "#00FF00",
-        "#FFFF00"
-      ],
-      "output": "wifi_qr_alter.svg",
-      "gradient_direction": "TopToBottom"
-    }
+      "password": "SecurePassword1234",
+      "security": "wpa",
+      "hidden": false
+    },
+    "output": "wifi-qr"
+  },
+  {
+    "email": {
+      "to": "example@mail.com",
+      "subject": "Test Email",
+      "body": "This is a test email generated from a QR code.",
+      "icon": "example_icon.png",
+      "format": "svg"
+    },
+    "output": "email-qr"
   }
 ]
+
 ```
 You can then run the batch processing command:
 ```bash

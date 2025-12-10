@@ -1,5 +1,5 @@
+use super::{EmailQr, QrConfig, QrItem, TextQr, WifiQr};
 use std::fmt;
-use super::{ WifiQr, TextQr, EmailQr, QrConfig, QrItem };
 
 #[cfg(feature = "cli")]
 use clap::Subcommand;
@@ -9,6 +9,7 @@ use clap::Subcommand;
 #[derive(Debug)]
 #[cfg_attr(feature = "cli", derive(Subcommand))]
 #[cfg_attr(feature = "batch", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "batch", serde(rename_all = "kebab-case"))]
 pub enum QrData {
     /// Generate a QR code from plain text. Recommended for URLs and other text data.
     #[cfg_attr(feature = "cli", command(skip))]
@@ -25,14 +26,6 @@ impl QrItem for QrData {
             QrData::Text(t) => t.config(),
             QrData::Wifi(w) => w.config(),
             QrData::Email(e) => e.config(),
-        }
-    }
-
-    fn output(&self) -> &str {
-        match self {
-            QrData::Text(t) => t.output(),
-            QrData::Wifi(w) => w.output(),
-            QrData::Email(e) => e.output(),
         }
     }
 }

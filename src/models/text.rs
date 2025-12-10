@@ -11,18 +11,6 @@ pub struct TextQr {
     #[cfg_attr(feature = "cli", arg(help = "Text to encode in the QR code"))]
     pub text: Option<String>,
 
-    /// Output file path.
-    #[cfg_attr(
-        feature = "cli",
-        arg(
-            long,
-            short,
-            help = "Output file path",
-            default_value_t = chrono::Local::now().format("qr_%Y-%m-%d_%H:%M:%S").to_string()
-        )
-    )]
-    pub output: String,
-
     #[cfg_attr(feature = "cli", command(flatten))]
     #[cfg_attr(feature = "batch", serde(flatten))]
     pub config: QrConfig,
@@ -41,9 +29,5 @@ impl std::fmt::Display for TextQr {
 impl QrItem for TextQr {
     fn config(&self) -> &QrConfig {
         &self.config
-    }
-
-    fn output(&self) -> &str {
-        &self.output
     }
 }

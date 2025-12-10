@@ -335,4 +335,8 @@ impl QrRenderer for SvgRenderer {
         std::fs::write(&final_path, &self.data).map_err(|e| e.to_string())?;
         Ok(final_path)
     }
+
+    fn to_bytes(&self) -> Result<Vec<u8>, String> {
+        Ok(self.data.as_bytes().to_vec())
+    }
 }

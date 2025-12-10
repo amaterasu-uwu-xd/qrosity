@@ -3,11 +3,12 @@ use crate::core::QrCodeEcc;
 #[cfg(feature = "cli")]
 use clap::{Args, ValueEnum};
 
-/// QR code module shapes. 
+/// QR code module shapes.
 /// These shapes determine how each module (square) of the QR code is rendered.
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[cfg_attr(feature = "cli", derive(ValueEnum))]
 #[cfg_attr(feature = "batch", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "batch", serde(rename_all = "kebab-case"))]
 pub enum ModuleShape {
     Square,
     Dots,
@@ -18,11 +19,12 @@ pub enum ModuleShape {
     VerticalBars,
 }
 
-// QR code finder pattern shapes. 
+// QR code finder pattern shapes.
 /// These shapes determine how the position detection patterns ("eyes") of the QR code are rendered.
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[cfg_attr(feature = "cli", derive(ValueEnum))]
 #[cfg_attr(feature = "batch", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "batch", serde(rename_all = "kebab-case"))]
 pub enum FinderShape {
     Square,
     Circle,
@@ -34,6 +36,7 @@ pub enum FinderShape {
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[cfg_attr(feature = "cli", derive(ValueEnum))]
 #[cfg_attr(feature = "batch", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "batch", serde(rename_all = "kebab-case"))]
 pub enum GradientDirection {
     TopToBottom,
     LeftToRight,
@@ -45,6 +48,7 @@ pub enum GradientDirection {
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[cfg_attr(feature = "cli", derive(ValueEnum))]
 #[cfg_attr(feature = "batch", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "batch", serde(rename_all = "kebab-case"))]
 pub enum OutputFormat {
     /// Output as PNG image.
     Png,
@@ -105,22 +109,16 @@ pub struct QrConfig {
 
     /// Error correction level.
     /// Higher levels increase redundancy but reduce data capacity.
-    #[cfg_attr(
-        feature = "cli",
-        arg(
-            long,
-            default_value = "medium",
-        )
-    )]
+    #[cfg_attr(feature = "cli", arg(long, default_value = "medium",))]
     pub ecl: QrCodeEcc,
 
     /// Mask pattern to use (0-7).
     /// If not set, it will be chosen automatically.
     /// Usually you don't need to set this.
     #[cfg_attr(
-        feature = "cli", 
+        feature = "cli",
         arg(
-            long, 
+            long,
             value_parser = clap::value_parser!(u8).range(0..=7)
         )
     )]
@@ -136,17 +134,14 @@ pub struct QrConfig {
             num_args = 1..,
         )
     )]
-    #[cfg_attr(feature = "batch", serde(deserialize_with = "deserialize_string_or_vec"))]
+    #[cfg_attr(
+        feature = "batch",
+        serde(deserialize_with = "deserialize_string_or_vec")
+    )]
     pub foreground: Vec<String>,
 
     /// Background color.
-    #[cfg_attr(
-        feature = "cli",
-        arg(
-            long,
-            default_value = "#FFFFFF",
-        )
-    )]
+    #[cfg_attr(feature = "cli", arg(long, default_value = "#FFFFFF",))]
     pub background: String,
 
     /// Gradient direction.
@@ -178,11 +173,7 @@ pub struct QrConfig {
     /// Whether to boost error correction level.
     #[cfg_attr(
         feature = "cli",
-        arg(
-            long,
-            help = "Boost error correction level",
-            default_value = "true",
-        )
+        arg(long, help = "Boost error correction level", default_value = "true",)
     )]
     pub boost_error_correction: bool,
 
@@ -209,13 +200,7 @@ pub struct QrConfig {
 
     /// Path to an icon image to embed in the QR code.
     /// The icon will be placed at the center of the QR code.
-    #[cfg_attr(
-        feature = "cli",
-        arg(
-            long,
-            short,
-        )
-    )]
+    #[cfg_attr(feature = "cli", arg(long, short,))]
     pub icon: Option<String>,
 
     /// Output format.

@@ -291,4 +291,56 @@ impl QrRenderer for PngRenderer {
     fn save(&self, path: &str) -> Result<String, String> {
         save_image(&self.pixmap, path, self.format)
     }
+
+    fn to_bytes(&self) -> Result<Vec<u8>, String> {
+        if self.format == OutputFormat::Png {
+            self.pixmap
+                .encode_png()
+                .map_err(|e| format!("Error encoding PNG: {}", e))
+        } else {
+            let width = self.pixmap.width();
+            let height = self.pixmap.height();
+
+            // Demultiply alpha since tiny-skia uses premultiplied alpha
+            let data: Vec<u8> = self
+                .pixmap
+                .pixels()
+                .iter()
+                .flat_map(|p| {
+                    let c = p.demultiply();
+                    [c.red(), c.green(), c.blue(), c.alpha()]
+                })
+                .collect();
+
+            let img = image::RgbaImage::from_raw(width, height, data)
+                .ok_or("Error creating image buffer from pixmap")?;
+
+            let dynamic_image = image::DynamicImage::ImageRgba8(img);
+
+            // Handle formats that don't support alpha or need specific conversion
+            let output_image = match self.format {
+                OutputFormat::Jpg | OutputFormat::Jpeg | OutputFormat::Bmp => {
+                    image::DynamicImage::ImageRgb8(dynamic_image.into_rgb8())
+                }
+                _ => dynamic_image,
+            };
+
+            let image_format = match self.format {
+                OutputFormat::Jpg | OutputFormat::Jpeg => image::ImageFormat::Jpeg,
+                OutputFormat::Bmp => image::ImageFormat::Bmp,
+                OutputFormat::Tiff => image::ImageFormat::Tiff,
+                OutputFormat::Gif => image::ImageFormat::Gif,
+                OutputFormat::Ico => image::ImageFormat::Ico,
+                OutputFormat::Webp => image::ImageFormat::WebP,
+                OutputFormat::Png => image::ImageFormat::Png,
+                _ => return Err(format!("Unsupported format: {:?}", self.format)),
+            };
+
+            let mut bytes: Vec<u8> = Vec::new();
+            output_image
+                .write_to(&mut std::io::Cursor::new(&mut bytes), image_format)
+                .map_err(|e| format!("Error encoding image: {}", e))?;
+            Ok(bytes)
+        }
+    }
 }

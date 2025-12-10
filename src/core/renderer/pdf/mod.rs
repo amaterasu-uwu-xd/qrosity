@@ -32,6 +32,10 @@ impl QrRenderer for PdfRenderer {
         file.write_all(&self.data).map_err(|e| e.to_string())?;
         Ok(final_path)
     }
+
+    fn to_bytes(&self) -> Result<Vec<u8>, String> {
+        Ok(self.data.clone())
+    }
 }
 
 struct PdfWriter {

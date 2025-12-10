@@ -1,8 +1,15 @@
-use crate::models::{QrData, QrItem};
 use crate::core::generate_qr;
+use crate::models::QrData;
+use rayon::prelude::*;
 use std::fs::File;
 use std::io::BufReader;
-use rayon::prelude::*;
+
+#[derive(serde::Deserialize)]
+struct BatchItem {
+    #[serde(flatten)]
+    data: QrData,
+    output: String,
+}
 
 /// Runs the batch processing mode.
 /// Reads a JSON file containing multiple QR code data items and generates QR codes for each.
@@ -16,7 +23,7 @@ pub fn run(input_path: String, threads: usize) {
     };
     let reader = BufReader::new(file);
 
-    let items: Vec<QrData> = match serde_json::from_reader(reader) {
+    let items: Vec<BatchItem> = match serde_json::from_reader(reader) {
         Ok(items) => items,
         Err(e) => {
             eprintln!("Error parsing JSON: {}", e);
@@ -24,7 +31,11 @@ pub fn run(input_path: String, threads: usize) {
         }
     };
 
-    println!("Processing {} items with {} threads...", items.len(), threads);
+    println!(
+        "Processing {} items with {} threads...",
+        items.len(),
+        threads
+    );
 
     let pool = rayon::ThreadPoolBuilder::new()
         .num_threads(threads)
@@ -33,22 +44,20 @@ pub fn run(input_path: String, threads: usize) {
 
     pool.install(|| {
         items.into_par_iter().for_each(|item| {
-            let content = item.to_string();
-            if content.is_empty() {
-                eprintln!("Skipping item with empty content (output: {})", item.output());
-                return;
-            }
-            match generate_qr(&item) {
+            let output = item.output.unwrap_or_else(|| {
+                format!("qr_{}", chrono::Local::now().format("%Y-%m-%d_%H-%M-%S_%f"))
+            });
+
+            match generate_qr(&item.data) {
                 Ok(renderer) => {
-                    let output = item.output();
-                    match renderer.save(output) {
-                        Ok(final_path) => println!("QR code saved to {}", final_path),
-                        Err(e) => eprintln!("Error saving QR for {}: {}", output, e),
+                    if let Err(e) = renderer.save(&output) {
+                        eprintln!("Error saving {}: {}", output, e);
+                    } else {
+                        println!("Saved {}", output);
                     }
-                },
-                Err(e) => eprintln!("Error generating QR for {}: {}", item.output(), e),
+                }
+                Err(e) => eprintln!("Error generating QR: {}", e),
             }
         });
     });
 }
-

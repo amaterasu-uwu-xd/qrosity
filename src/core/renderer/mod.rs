@@ -1,15 +1,16 @@
 use crate::core::qrgen::QrCode;
 
-pub mod png;
-pub mod svg;
 pub mod eps;
 pub mod pdf;
+pub mod png;
+pub mod svg;
 pub mod utils;
 
 /// Trait for QR code renderers.
 /// Allows rendering to an in-memory format and saving to a file.
 pub trait QrRenderer {
     fn save(&self, path: &str) -> Result<String, String>;
+    fn to_bytes(&self) -> Result<Vec<u8>, String>;
 }
 
 /// Provides context about the position of a module in the QR code.
@@ -30,9 +31,15 @@ pub trait QrGrid {
         self.get_module(x, y)
     }
     fn is_finder(&self, x: usize, y: usize) -> bool {
-        if x < 7 && y < 7 { return true; }
-        if x >= self.size() - 7 && y < 7 { return true; }
-        if x < 7 && y >= self.size() - 7 { return true; }
+        if x < 7 && y < 7 {
+            return true;
+        }
+        if x >= self.size() - 7 && y < 7 {
+            return true;
+        }
+        if x < 7 && y >= self.size() - 7 {
+            return true;
+        }
         false
     }
     fn module_context(&self, x: usize, y: usize) -> ModuleContext {
