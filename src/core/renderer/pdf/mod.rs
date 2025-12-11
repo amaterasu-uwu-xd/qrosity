@@ -159,15 +159,22 @@ fn render_pdf<G: QrGrid + ?Sized>(
 
     // 0. Load Icon (if any)
     let mut icon_info = None;
-    if let Some(icon_path) = &options.icon {
-        if let Some(img) = utils::load_raster_icon(icon_path, "PDF") {
-            let (id, _) = writer.create_image_xobject(&img);
-            // Calculate size and position
-            // Default to 20% of QR size
-            let icon_size_px = width_px * 0.25;
-            let icon_x = (width_px - icon_size_px) / 2.0;
-            let icon_y = (height_px - icon_size_px) / 2.0;
-            icon_info = Some((id, icon_size_px, icon_size_px, icon_x, icon_y));
+    if let Some(image) = utils::resolve_image(options) {
+        match image {
+            crate::models::QrImage::Raster(img) => {
+                let (id, _) = writer.create_image_xobject(&img);
+                // Calculate size and position
+                // Default to 20% of QR size
+                let icon_size_px = width_px * 0.25;
+                let icon_x = (width_px - icon_size_px) / 2.0;
+                let icon_y = (height_px - icon_size_px) / 2.0;
+                icon_info = Some((id, icon_size_px, icon_size_px, icon_x, icon_y));
+            }
+            crate::models::QrImage::Svg(_) => {
+                eprintln!(
+                    "Warning: SVG icons are not supported in PDF output. The icon will be ignored."
+                );
+            }
         }
     }
 

@@ -1,3 +1,4 @@
+use super::QrImage;
 use crate::core::QrCodeEcc;
 
 #[cfg(feature = "cli")]
@@ -203,6 +204,12 @@ pub struct QrConfig {
     #[cfg_attr(feature = "cli", arg(long, short,))]
     pub icon: Option<String>,
 
+    /// Image data to embed in the QR code.
+    /// If provided, this takes precedence over `icon`.
+    #[cfg_attr(feature = "cli", arg(skip))]
+    #[cfg_attr(feature = "batch", serde(skip))]
+    pub image: Option<QrImage>,
+
     /// Output format.
     #[cfg_attr(
         feature = "cli",
@@ -248,6 +255,7 @@ impl Default for QrConfig {
             shape: ModuleShape::default(),
             finder: FinderShape::default(),
             icon: None,
+            image: None,
             format: OutputFormat::Png,
         }
     }

@@ -1,8 +1,13 @@
-use crate::{core::qrgen::{Mask, QrCode, QrSegment, Version}, models::{QrItem, OutputFormat}};
-use crate::core::renderer::{QrRenderer, svg::SvgRenderer, eps::EpsRenderer, png::PngRenderer, pdf::PdfRenderer};
+use crate::core::renderer::{
+    QrRenderer, eps::EpsRenderer, pdf::PdfRenderer, png::PngRenderer, svg::SvgRenderer,
+};
+use crate::{
+    core::qrgen::{Mask, QrCode, QrSegment, Version},
+    models::{OutputFormat, QrItem},
+};
 
 pub mod qrgen;
-mod renderer;
+pub mod renderer;
 
 pub use qrgen::QrCodeEcc;
 
@@ -14,7 +19,7 @@ pub fn generate_qr<T: QrItem>(item: &T) -> Result<Box<dyn QrRenderer>, String> {
 
     let segments = QrSegment::make_segments(&content);
     let qr = QrCode::encode_segments_advanced(
-        &segments, 
+        &segments,
         config.ecl,
         Version::MIN,
         if let Some(version) = config.max_version {
@@ -27,8 +32,9 @@ pub fn generate_qr<T: QrItem>(item: &T) -> Result<Box<dyn QrRenderer>, String> {
         } else {
             None
         },
-        config.boost_error_correction
-    ).map_err(|e| format!("Error generating QR: {:?}", e))?;
+        config.boost_error_correction,
+    )
+    .map_err(|e| format!("Error generating QR: {:?}", e))?;
 
     let renderer: Box<dyn QrRenderer> = match config.format {
         OutputFormat::Svg => Box::new(SvgRenderer::new(&qr, config)?),
@@ -39,4 +45,3 @@ pub fn generate_qr<T: QrItem>(item: &T) -> Result<Box<dyn QrRenderer>, String> {
 
     Ok(renderer)
 }
-

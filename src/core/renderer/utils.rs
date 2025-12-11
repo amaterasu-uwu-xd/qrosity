@@ -1,5 +1,23 @@
-use crate::models::GradientDirection;
+use crate::models::{GradientDirection, QrConfig, QrImage};
 use image::DynamicImage;
+
+pub fn resolve_image(config: &QrConfig) -> Option<QrImage> {
+    if let Some(image) = &config.image {
+        return Some(image.clone());
+    }
+
+    if let Some(path) = &config.icon {
+        match QrImage::load_from_path(path) {
+            Ok(img) => return Some(img),
+            Err(e) => {
+                eprintln!("Warning: {}", e);
+                return None;
+            }
+        }
+    }
+
+    None
+}
 
 pub fn parse_hex_color(hex: &str) -> Option<(u8, u8, u8)> {
     let hex = hex.trim_start_matches('#');

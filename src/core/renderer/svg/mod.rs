@@ -150,10 +150,8 @@ pub fn render_svg<G: QrGrid + ?Sized>(
     }
 
     // Icon
-    if let Some(icon_path) = &options.icon {
-        if let Some(buffer) = utils::read_icon_data(icon_path) {
-            append_icon(&mut svg, &buffer, icon_path, size, pixel_size, width_px);
-        }
+    if let Some(image) = utils::resolve_image(options) {
+        append_icon(&mut svg, &image, size, pixel_size, width_px);
     }
 
     writeln!(&mut svg, "</svg>").unwrap();
@@ -163,26 +161,25 @@ pub fn render_svg<G: QrGrid + ?Sized>(
 
 fn append_icon(
     svg: &mut String,
-    buffer: &[u8],
-    icon_path: &str,
+    image: &crate::models::QrImage,
     size: usize,
     pixel_size: f32,
     width_px: f32,
 ) {
     let mut width: Option<u32> = None;
     let mut height: Option<u32> = None;
-    let mut mime_type = "application/octet-stream";
+    let mime_type;
+    let mut encoded_data = String::new();
 
-    // Try to detect SVG
-    let is_svg = utils::is_svg_buffer(buffer);
+    match image {
+        crate::models::QrImage::Svg(content) => {
+            mime_type = "image/svg+xml";
+            encoded_data = encode_base64(content.as_bytes());
 
-    if is_svg {
-        mime_type = "image/svg+xml";
-        if let Ok(s) = std::str::from_utf8(buffer) {
             // Simple manual parsing for width/height/viewBox
-            if let Some(start) = s.find("<svg") {
-                let end = s[start..].find('>').unwrap_or(s.len()) + start;
-                let tag = &s[start..end];
+            if let Some(start) = content.find("<svg") {
+                let end = content[start..].find('>').unwrap_or(content.len()) + start;
+                let tag = &content[start..end];
 
                 let parse_attr = |attr: &str| -> Option<u32> {
                     if let Some(pos) = tag.find(attr) {
@@ -230,29 +227,29 @@ fn append_icon(
                 }
             }
         }
-    } else {
-        // Try raster
-        if let Ok(reader) =
-            image::ImageReader::new(std::io::Cursor::new(buffer)).with_guessed_format()
-        {
-            if let Ok(dims) = reader.into_dimensions() {
-                width = Some(dims.0);
-                height = Some(dims.1);
+        crate::models::QrImage::Raster(img) => {
+            width = Some(img.width());
+            height = Some(img.height());
+            mime_type = "image/png";
 
-                if let Ok(format) = image::guess_format(buffer) {
-                    mime_type = match format {
-                        image::ImageFormat::Png => "image/png",
-                        image::ImageFormat::Jpeg => "image/jpeg",
-                        image::ImageFormat::Gif => "image/gif",
-                        image::ImageFormat::WebP => "image/webp",
-                        _ => "application/octet-stream",
-                    };
-                }
+            let mut buffer = Vec::new();
+            if img
+                .write_to(
+                    &mut std::io::Cursor::new(&mut buffer),
+                    image::ImageFormat::Png,
+                )
+                .is_ok()
+            {
+                encoded_data = encode_base64(&buffer);
             }
         }
     }
 
     if let (Some(w_px), Some(h_px)) = (width, height) {
+        if encoded_data.is_empty() {
+            return;
+        }
+
         let icon_size = size as f32 * 0.25 * pixel_size;
         let scale = icon_size / (w_px.max(h_px) as f32);
         let w = w_px as f32 * scale;
@@ -260,9 +257,7 @@ fn append_icon(
         let x = (width_px - w) / 2.0;
         let y = (width_px - h) / 2.0;
 
-        // Encode base64
-        let encoded = encode_base64(buffer);
-        let href = format!("data:{};base64,{}", mime_type, encoded);
+        let href = format!("data:{};base64,{}", mime_type, encoded_data);
 
         writeln!(
             svg,
@@ -271,10 +266,7 @@ fn append_icon(
         )
         .unwrap();
     } else {
-        eprintln!(
-            "Warning: Could not detect image format or dimensions for icon '{}'. The icon will be ignored.",
-            icon_path
-        );
+        eprintln!("Warning: Could not detect dimensions for icon. The icon will be ignored.");
     }
 }
 

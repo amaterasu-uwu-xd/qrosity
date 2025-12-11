@@ -158,9 +158,16 @@ pub fn render_eps<G: QrGrid + ?Sized>(
     }
 
     // Icon
-    if let Some(icon_path) = &options.icon {
-        if let Some(img) = utils::load_raster_icon(icon_path, "EPS") {
-            append_icon(&mut eps, &img, size, pixel_size, width_px, height_px);
+    if let Some(image) = utils::resolve_image(options) {
+        match image {
+            crate::models::QrImage::Raster(img) => {
+                append_icon(&mut eps, &img, size, pixel_size, width_px, height_px);
+            }
+            crate::models::QrImage::Svg(_) => {
+                eprintln!(
+                    "Warning: SVG icons are not supported in EPS output. The icon will be ignored."
+                );
+            }
         }
     }
 

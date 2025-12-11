@@ -146,9 +146,16 @@ pub fn render_qr<G: QrGrid + ?Sized>(
         &paint,
     );
 
-    if let Some(icon_path) = &options.icon {
-        if let Some(img) = utils::load_raster_icon(icon_path, "PNG") {
-            draw_icon(&mut pixmap, options.ppm, &img, size as f32, width_px)?;
+    if let Some(image) = utils::resolve_image(options) {
+        match image {
+            crate::models::QrImage::Raster(img) => {
+                draw_icon(&mut pixmap, options.ppm, &img, size as f32, width_px)?;
+            }
+            crate::models::QrImage::Svg(_) => {
+                eprintln!(
+                    "Warning: SVG icons are not supported in PNG output. The icon will be ignored."
+                );
+            }
         }
     }
 

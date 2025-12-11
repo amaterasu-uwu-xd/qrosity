@@ -3,6 +3,7 @@ mod text;
 mod wifi;
 
 mod config;
+mod image;
 mod wrapper;
 
 pub use config::FinderShape;
@@ -11,6 +12,7 @@ pub use config::ModuleShape;
 pub use config::OutputFormat;
 pub use config::QrConfig;
 pub use email::EmailQr;
+pub use image::QrImage;
 pub use text::TextQr;
 pub use wifi::WifiQr;
 pub use wrapper::QrData;
