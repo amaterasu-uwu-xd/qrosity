@@ -1,5 +1,8 @@
 # qrosity
-A terminal and desktop application for generating QR codes with advanced customization options.
+A versatile QR code generator library and application with many customization options.
+
+Builded on top of the QR Code generator library by Nayuki (https://www.nayuki.io/page/qr-code-generator-library).
+
 ![example qr code](./assets/example.png)
 
 ## Features
@@ -72,8 +75,10 @@ You can generate multiple QR codes in a batch by providing a JSON file with the 
     "output": "email-qr"
   }
 ]
-
 ```
+
+If the `output` field does not contain an extension, the appropriate one will be added based on the specified format.
+
 You can then run the batch processing command:
 ```bash
 qrosity batch data.json
@@ -100,26 +105,52 @@ You can also use `qrosity` as a library in your Rust projects. Add the following
 qrosity = { version = "*", no-default-features = true, features = ["svg"] } # Use no-default-features to avoid pulling in CLI/GUI dependencies. You can enable features as needed.
 ```
 
-Then, you can use it in your code:
+Then, you can use it in your code. The following example generates the example QR code shown at the top of this README:
 ```rust
-use qrosity::{core::to_qr, models::{EmailQr, QrConfig}};
+use qrosity::{
+    core::generate_qr,
+    models::{FinderShape, GradientDirection, ModuleShape, OutputFormat, QrConfig, TextQr},
+};
 
 fn main() {
-    println!("Hello, world!");
-    let email_qr = EmailQr {
-        to: "example@example.com".to_string(),
-        subject: Some("Greetings".to_string()),
-        body: Some("Hello, this is a test email.".to_string()),
-        cc: None,
-        bcc: None,
+    let qr_struct = TextQr {
+        text: Some("Hello, QR Code!".to_string()),
         config: QrConfig {
-            output: "help.png".to_string(),
-            ecl: qrosity::core::QrCodeEcc::Medium,
+            background: "#1e1e2e".to_string(),
+            foreground: vec![
+                "#89b4fa".to_string(),
+                "#74c7ec".to_string(),
+                "#89dceb".to_string(),
+                "#74c7ec".to_string(),
+                "#89b4fa".to_string(),
+            ],
+            gradient_direction: GradientDirection::Radial,
+            // Specify an icon path
+            icon: Some("icon.png".to_string()),
+            // Instead, if you use the `image` crate and have an image in memory, you can use:
+            // image: QrImage::Raster(dynamic_image_variable), 
+            shape: ModuleShape::Dots,
+            finder: FinderShape::Rounded,
+            format: OutputFormat::Svg,
             ..Default::default()
-        }
-    }; 
-    println!("Generated mailto URI: {}", email_qr);
-    to_qr(email_qr);
+        },
+    };
+
+    let output_path = "output.svg";
+
+    // Generate the QR code
+    let result = generate_qr(&qr_struct).unwrap();
+
+    // It can be saved to a file
+    match result.save(output_path) {
+        Ok(final_path) => println!("QR code saved to {}", final_path),
+        Err(e) => eprintln!("Error saving QR: {}", e),
+    }
+
+    // Or get the raw bytes
+    // Useful for web applications
+    let qr_bytes = result.to_bytes().unwrap();
+    println!("Generated QR code with {} bytes", qr_bytes.len());
 }
 ```
 

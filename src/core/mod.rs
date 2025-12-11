@@ -18,6 +18,7 @@ pub fn generate_qr<T: QrItem>(item: &T) -> Result<Box<dyn QrRenderer>, String> {
     let config = item.config();
 
     let segments = QrSegment::make_segments(&content);
+
     let qr = QrCode::encode_segments_advanced(
         &segments,
         config.ecl,
@@ -33,8 +34,12 @@ pub fn generate_qr<T: QrItem>(item: &T) -> Result<Box<dyn QrRenderer>, String> {
             None
         },
         config.boost_error_correction,
-    )
-    .map_err(|e| format!("Error generating QR: {:?}", e))?;
+    );
+
+    let qr = match qr {
+        Ok(code) => code,
+        Err(e) => return Err(format!("Failed to generate QR code: {}", e)),
+    };
 
     let renderer: Box<dyn QrRenderer> = match config.format {
         OutputFormat::Svg => Box::new(SvgRenderer::new(&qr, config)?),
