@@ -1,5 +1,5 @@
 use crate::core::renderer::{QrGrid, QrRenderer, utils};
-use crate::models::{GradientDirection, QrConfig};
+use crate::models::{GradientDirection, QrConfig, QrImage};
 use std::fmt::Write;
 
 mod finder;
@@ -157,18 +157,25 @@ pub fn render_eps<G: QrGrid + ?Sized>(
         writeln!(&mut eps, "grestore").unwrap();
     }
 
-    // Icon
-    if let Some(image) = utils::resolve_image(options) {
+    if let Some(image) = &options.image {
         match image {
             crate::models::QrImage::Raster(img) => {
-                append_icon(&mut eps, &img, size, pixel_size, width_px, height_px);
+                append_icon(&mut eps, img, size, pixel_size, width_px, height_px);
             }
             crate::models::QrImage::Svg(_) => {
-                eprintln!(
-                    "Warning: SVG icons are not supported in EPS output. The icon will be ignored."
-                );
+                return Err(format!("EPS renderer does not support SVG icons."));
             }
         }
+    } else if let Some(icon_path) = &options.icon {
+        QrImage::load_from_path(icon_path).and_then(|image| match image {
+            crate::models::QrImage::Raster(img) => {
+                append_icon(&mut eps, &img, size, pixel_size, width_px, height_px);
+                Ok(())
+            }
+            crate::models::QrImage::Svg(_) => {
+                Err(format!("EPS renderer does not support SVG icons."))
+            }
+        })?;
     }
 
     writeln!(&mut eps, "%%EOF").unwrap();

@@ -1,3 +1,5 @@
+use std::fmt;
+
 use super::QrImage;
 use crate::core::QrCodeEcc;
 
@@ -73,6 +75,25 @@ pub enum OutputFormat {
     Eps,
     /// Output as PDF document.
     Pdf,
+}
+
+impl fmt::Display for OutputFormat {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            OutputFormat::Png => "PNG",
+            OutputFormat::Jpg => "JPG",
+            OutputFormat::Jpeg => "JPEG",
+            OutputFormat::Bmp => "PBM",
+            OutputFormat::Tiff => "TIFF",
+            OutputFormat::Gif => "GIF",
+            OutputFormat::Ico => "ICO",
+            OutputFormat::Webp => "WEBP",
+            OutputFormat::Svg => "SVG",
+            OutputFormat::Eps => "EPS",
+            OutputFormat::Pdf => "PDF",
+        };
+        write!(f, "{}", s)
+    }
 }
 
 /// Configuration options for generating and rendering a QR code.

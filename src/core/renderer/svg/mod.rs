@@ -1,5 +1,5 @@
-use crate::core::renderer::{QrGrid, QrRenderer, utils};
-use crate::models::{GradientDirection, QrConfig};
+use crate::core::renderer::{QrGrid, QrRenderer};
+use crate::models::{GradientDirection, QrConfig, QrImage};
 use std::fmt::Write;
 
 mod finder;
@@ -149,9 +149,17 @@ pub fn render_svg<G: QrGrid + ?Sized>(
         .unwrap();
     }
 
-    // Icon
-    if let Some(image) = utils::resolve_image(options) {
-        append_icon(&mut svg, &image, size, pixel_size, width_px);
+    if let Some(image) = &options.image {
+        append_icon(&mut svg, image, size, pixel_size, width_px)?;
+    } else if let Some(icon_path) = &options.icon {
+        match QrImage::load_from_path(icon_path) {
+            Ok(image) => {
+                append_icon(&mut svg, &image, size, pixel_size, width_px)?;
+            }
+            Err(e) => {
+                return Err(format!("Failed to load icon image: {}", e));
+            }
+        }
     }
 
     writeln!(&mut svg, "</svg>").unwrap();
@@ -165,7 +173,7 @@ fn append_icon(
     size: usize,
     pixel_size: f32,
     width_px: f32,
-) {
+) -> Result<(), String> {
     let mut width: Option<u32> = None;
     let mut height: Option<u32> = None;
     let mime_type;
@@ -247,7 +255,7 @@ fn append_icon(
 
     if let (Some(w_px), Some(h_px)) = (width, height) {
         if encoded_data.is_empty() {
-            return;
+            return Err(format!("Failed to encode icon image data."))?;
         }
 
         let icon_size = size as f32 * 0.25 * pixel_size;
@@ -266,8 +274,9 @@ fn append_icon(
         )
         .unwrap();
     } else {
-        eprintln!("Warning: Could not detect dimensions for icon. The icon will be ignored.");
+        return Err(format!("Icon image dimensions could not be determined."))?;
     }
+    Ok(())
 }
 
 fn encode_base64(input: &[u8]) -> String {

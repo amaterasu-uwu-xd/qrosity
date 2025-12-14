@@ -1,5 +1,5 @@
 use crate::core::renderer::{QrGrid, QrRenderer, utils};
-use crate::models::{GradientDirection, QrConfig};
+use crate::models::{GradientDirection, QrConfig, QrImage};
 use image::{ColorType, DynamicImage, GenericImageView};
 use std::fs::File;
 use std::io::Write;
@@ -157,23 +157,43 @@ fn render_pdf<G: QrGrid + ?Sized>(
 
     let mut writer = PdfWriter::new();
 
-    // 0. Load Icon (if any)
     let mut icon_info = None;
-    if let Some(image) = utils::resolve_image(options) {
+    if let Some(image) = &options.image {
         match image {
             crate::models::QrImage::Raster(img) => {
                 let (id, _) = writer.create_image_xobject(&img);
                 // Calculate size and position
-                // Default to 20% of QR size
+                // Default to 25% of QR size
                 let icon_size_px = width_px * 0.25;
                 let icon_x = (width_px - icon_size_px) / 2.0;
                 let icon_y = (height_px - icon_size_px) / 2.0;
                 icon_info = Some((id, icon_size_px, icon_size_px, icon_x, icon_y));
             }
             crate::models::QrImage::Svg(_) => {
-                eprintln!(
-                    "Warning: SVG icons are not supported in PDF output. The icon will be ignored."
-                );
+                return Err(format!("PDF output does not support SVG icons."));
+            }
+        }
+    } else if let Some(icon_path) = &options.icon {
+        match QrImage::load_from_path(icon_path) {
+            Ok(image) => match image {
+                crate::models::QrImage::Raster(img) => {
+                    let (id, _) = writer.create_image_xobject(&img);
+                    // Calculate size and position
+                    // Default to 25% of QR size
+                    let icon_size_px = width_px * 0.25;
+                    let icon_x = (width_px - icon_size_px) / 2.0;
+                    let icon_y = (height_px - icon_size_px) / 2.0;
+                    icon_info = Some((id, icon_size_px, icon_size_px, icon_x, icon_y));
+                }
+                crate::models::QrImage::Svg(_) => {
+                    return Err(format!("PDF output does not support SVG icons."));
+                }
+            },
+            Err(e) => {
+                return Err(format!(
+                    "Icon file '{}' could not be loaded: {}",
+                    icon_path, e
+                ));
             }
         }
     }

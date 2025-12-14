@@ -26,7 +26,7 @@ impl QrImage {
             Ok(QrImage::Svg(svg_content))
         } else {
             let img =
-                image::open(path).map_err(|e| format!("Failed to load raster image: {}", e))?;
+                image::open(path).map_err(|e| format!("Unable to load raster image: {}", e))?;
             Ok(QrImage::Raster(img))
         }
     }

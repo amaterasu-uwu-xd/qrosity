@@ -1,23 +1,4 @@
-use crate::models::{GradientDirection, QrConfig, QrImage};
-use image::DynamicImage;
-
-pub fn resolve_image(config: &QrConfig) -> Option<QrImage> {
-    if let Some(image) = &config.image {
-        return Some(image.clone());
-    }
-
-    if let Some(path) = &config.icon {
-        match QrImage::load_from_path(path) {
-            Ok(img) => return Some(img),
-            Err(e) => {
-                eprintln!("Warning: {}", e);
-                return None;
-            }
-        }
-    }
-
-    None
-}
+use crate::models::GradientDirection;
 
 pub fn parse_hex_color(hex: &str) -> Option<(u8, u8, u8)> {
     let hex = hex.trim_start_matches('#');
@@ -33,54 +14,6 @@ pub fn parse_hex_color(hex: &str) -> Option<(u8, u8, u8)> {
         Some((r * 17, g * 17, b * 17))
     } else {
         None
-    }
-}
-
-pub fn load_image(path: &str) -> Result<DynamicImage, String> {
-    image::open(path).map_err(|e| e.to_string())
-}
-
-pub fn load_raster_icon(path: &str, output_format_name: &str) -> Option<DynamicImage> {
-    if !std::path::Path::new(path).exists() {
-        eprintln!("Warning: Icon file not found: {}", path);
-        return None;
-    }
-
-    if is_svg_file(path) {
-        eprintln!(
-            "Warning: SVG icons are not supported in {} output. The icon will be ignored.",
-            output_format_name
-        );
-        return None;
-    }
-
-    match load_image(path) {
-        Ok(img) => Some(img),
-        Err(e) => {
-            eprintln!(
-                "Warning: Failed to load icon '{}': {}. The icon will be ignored.",
-                path, e
-            );
-            None
-        }
-    }
-}
-
-pub fn read_icon_data(path: &str) -> Option<Vec<u8>> {
-    if !std::path::Path::new(path).exists() {
-        eprintln!("Warning: Icon file not found: {}", path);
-        return None;
-    }
-
-    match std::fs::read(path) {
-        Ok(data) => Some(data),
-        Err(e) => {
-            eprintln!(
-                "Warning: Failed to read icon '{}': {}. The icon will be ignored.",
-                path, e
-            );
-            None
-        }
     }
 }
 

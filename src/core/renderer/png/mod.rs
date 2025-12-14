@@ -1,5 +1,5 @@
 use crate::core::renderer::{QrGrid, QrRenderer, utils};
-use crate::models::{GradientDirection, OutputFormat, QrConfig};
+use crate::models::{GradientDirection, OutputFormat, QrConfig, QrImage};
 use tiny_skia::*;
 
 mod finder;
@@ -146,16 +146,32 @@ pub fn render_qr<G: QrGrid + ?Sized>(
         &paint,
     );
 
-    if let Some(image) = utils::resolve_image(options) {
+    if let Some(image) = &options.image {
         match image {
             crate::models::QrImage::Raster(img) => {
-                draw_icon(&mut pixmap, options.ppm, &img, size as f32, width_px)?;
+                draw_icon(&mut pixmap, options.ppm, img, size as f32, width_px)?;
             }
             crate::models::QrImage::Svg(_) => {
-                eprintln!(
-                    "Warning: SVG icons are not supported in PNG output. The icon will be ignored."
-                );
+                return Err(format!(
+                    "{} format does not support SVG icons.",
+                    options.format
+                ));
             }
+        }
+    } else if let Some(icon_path) = &options.icon {
+        match QrImage::load_from_path(icon_path) {
+            Ok(img) => match img {
+                crate::models::QrImage::Raster(img) => {
+                    draw_icon(&mut pixmap, options.ppm, &img, size as f32, width_px)?;
+                }
+                crate::models::QrImage::Svg(_) => {
+                    return Err(format!(
+                        "{} format does not support SVG icons.",
+                        options.format
+                    ));
+                }
+            },
+            Err(e) => Err(e)?,
         }
     }
 
